@@ -302,14 +302,9 @@
     <div class="side-eyebrow">Paramètres</div>
 
     <div class="field">
-      <label class="field-label">Clé API Finnhub <span style="color:var(--neg)">·</span></label>
+      <label class="field-label">Clé API Finnhub</label>
       <input class="api-input" type="password" id="fhKey" placeholder="Colle ta clé Finnhub ici…" oninput="saveKeys()">
-      <div class="api-hint">Source principale (univers, fondamentaux, temps réel). <a href="https://finnhub.io/register" target="_blank" rel="noopener">Obtenir une clé gratuite</a>. 60 appels/min.</div>
-    </div>
-    <div class="field">
-      <label class="field-label">Clé API FMP <span style="color:var(--ink-48)">· optionnelle</span></label>
-      <input class="api-input" type="password" id="fmpKey" placeholder="(facultatif) pour le graphique de cours…" oninput="saveKeys()">
-      <div class="api-hint">Utilisée uniquement pour l'historique de cours sur 1 an (premium chez Finnhub).</div>
+      <div class="api-hint">Solution clé en main, une seule clé pour tout. <a href="https://finnhub.io/register" target="_blank" rel="noopener">Obtenir une clé gratuite</a> → copie « API Key » du tableau de bord. 60 appels/min.</div>
     </div>
 
     <div class="quota">
@@ -330,9 +325,8 @@
     <div class="slider-field"><div class="slider-head"><span class="slider-label">ROIC / ROCE</span><span class="slider-value" id="v-roce">≥ 10%</span></div><input type="range" min="0" max="50" value="10" oninput="setF('roce',this.value,'%','≥')"></div>
 
     <div class="group-title">Rachats d'actions</div>
-    <div class="slider-field"><div class="slider-head"><span class="slider-label">Rachat net annualisé (estimé)</span><span class="slider-value" id="v-bb">≥ 0%</span></div><input type="range" min="-5" max="10" step="0.5" value="0" oninput="setF('bb',this.value,'%','≥',1)"></div>
-    <div class="toggle-row"><span>Exiger des rachats nets</span><label class="switch"><input type="checkbox" id="t-bb"><span class="switch-track"></span></label></div>
-    <div class="chip-note">Estimation : croissance du CA/action comparée à celle du CA total sur la période disponible (~5 ans). Si le CA/action progresse plus vite, le nombre d'actions baisse → rachats.</div>
+    <div class="toggle-row"><span>Rachète ses actions</span><label class="switch"><input type="checkbox" id="t-buy"><span class="switch-track"></span></label></div>
+    <div class="chip-note">Activé : n'affiche que les entreprises qui réduisent leur nombre d'actions dans le temps (= rachats nets). Le taux estimé reste visible sur chaque fiche.</div>
 
     <div class="group-title">Solidité financière</div>
     <div class="slider-field"><div class="slider-head"><span class="slider-label">Current Ratio</span><span class="slider-value" id="v-cr">≥ 1.0</span></div><input type="range" min="0" max="5" step="0.1" value="1" oninput="setF('cr',this.value,'','≥',1)"></div>
@@ -344,7 +338,7 @@
     <div class="slider-field"><div class="slider-head"><span class="slider-label">Capitalisation min.</span><span class="slider-value" id="v-mc">≥ 10 Mds</span></div><input type="range" min="1" max="500" value="10" oninput="setCap(this.value)"></div>
 
     <div class="group-title">Critères qualitatifs</div>
-    <div class="toggle-row"><span>Dividende actif</span><label class="switch"><input type="checkbox" id="t-div"><span class="switch-track"></span></label></div>
+    <div class="toggle-row"><span>Dividende</span><label class="switch"><input type="checkbox" id="t-div"><span class="switch-track"></span></label></div>
 
     <div class="group-title">Secteurs</div>
     <div class="chips" id="chips"></div>
@@ -412,7 +406,7 @@
       <div class="desc-block"><div class="desc-text" id="m-desc"></div><div class="tags" id="m-tags"></div></div>
       <div class="sec-title">Données financières</div>
       <div class="charts">
-        <div class="chart-card"><div class="chart-card-title">Cours · 1 an</div><div class="chart-card-note" id="n-price">&nbsp;</div><div class="chart-wrap"><canvas id="c-price"></canvas></div></div>
+        <div class="chart-card"><div class="chart-card-title">Performance du cours</div><div class="chart-card-note" id="n-price">&nbsp;</div><div class="chart-wrap"><canvas id="c-price"></canvas></div></div>
         <div class="chart-card"><div class="chart-card-title">Chiffre d'affaires / action ($)</div><div class="chart-card-note" id="n-sps">&nbsp;</div><div class="chart-wrap"><canvas id="c-sps"></canvas></div></div>
         <div class="chart-card"><div class="chart-card-title">Marge nette (%)</div><div class="chart-card-note" id="n-margin">&nbsp;</div><div class="chart-wrap"><canvas id="c-margin"></canvas></div></div>
         <div class="chart-card"><div class="chart-card-title">Bénéfice par action ($)</div><div class="chart-card-note" id="n-eps">&nbsp;</div><div class="chart-wrap"><canvas id="c-eps"></canvas></div></div>
@@ -429,7 +423,6 @@
 
 <script>
 const FH='https://finnhub.io/api/v1';
-const FMP='https://financialmodelingprep.com/stable';
 
 /* Valeurs prioritaires : grandes capitalisations US de qualité, analysées en premier
    (l'univers Finnhub n'expose pas la capi avant l'appel profil, donc on amorce par ces noms). */
@@ -467,7 +460,7 @@ function sectorOf(industry){
 function sectorLabel(k){ const m=SECTORS.find(s=>s.k===k); return m?m.n:'Autre'; }
 
 let results=[], watch=JSON.parse(localStorage.getItem('el-watch')||'[]'), charts={}, sortMode='score', universe=null;
-const F={rg:10,nm:10,roce:10,bb:0,cr:1,ge:150,po:70,pb:10,mc:10};
+const F={rg:10,nm:10,roce:10,cr:1,ge:150,po:70,pb:10,mc:10};
 let searchTimer=null;
 
 /* ── CACHE (18h) ── */
@@ -494,11 +487,27 @@ setInterval(renderRate,2000);
 function cfg(){ return { maxRun:parseInt(document.getElementById('maxRun').value)||60 }; }
 function saveCfg(){ localStorage.setItem('el-cfg',JSON.stringify(cfg())); }
 function loadCfg(){ try{ const c=JSON.parse(localStorage.getItem('el-cfg')||'null'); if(c&&c.maxRun) document.getElementById('maxRun').value=c.maxRun; }catch(e){} }
-function fhKey(){ return document.getElementById('fhKey').value.trim(); }
-function fmpKey(){ return document.getElementById('fmpKey').value.trim(); }
-function saveKeys(){ localStorage.setItem('el-fh',fhKey()); localStorage.setItem('el-fmp',fmpKey()); setStatus(fhKey().length>8); }
-function loadKeys(){ document.getElementById('fhKey').value=localStorage.getItem('el-fh')||''; document.getElementById('fmpKey').value=localStorage.getItem('el-fmp')||''; setStatus(fhKey().length>8); }
-function setStatus(ok){ document.getElementById('statusDot').className='status-dot'+(ok?' on':''); document.getElementById('statusText').textContent=ok?'Finnhub connecté':'Clé Finnhub requise'; }
+function fhKey(){ return document.getElementById('fhKey').value.trim().replace(/^["']|["']$/g,'').replace(/^token=/i,'').trim(); }
+let vTimer=null;
+function saveKeys(){ localStorage.setItem('el-fh',fhKey()); const k=fhKey(); if(k.length<8){ setStatus(false); return; } setStatus('checking'); clearTimeout(vTimer); vTimer=setTimeout(validateKey,600); }
+function loadKeys(){ document.getElementById('fhKey').value=localStorage.getItem('el-fh')||''; if(fhKey().length>=8){ setStatus('checking'); validateKey(); } else setStatus(false); }
+async function validateKey(){
+  const k=fhKey(); if(k.length<8){ setStatus(false); return; }
+  try{
+    const r=await fetch(`${FH}/quote?symbol=AAPL&token=${k}`);
+    if(r.status===401){ setStatus(false); return; }
+    if(!r.ok){ setStatus('neterr'); return; }
+    const j=await r.json();
+    setStatus(j&&typeof j.c==='number'&&j.c>0 ? true : false);
+  }catch(e){ setStatus('neterr'); }
+}
+function setStatus(state){
+  const dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
+  if(state===true){ dot.className='status-dot on'; txt.textContent='Clé valide ✓'; }
+  else if(state==='checking'){ dot.className='status-dot'; txt.textContent='Vérification…'; }
+  else if(state==='neterr'){ dot.className='status-dot'; txt.textContent='Réseau indisponible'; }
+  else { dot.className='status-dot'; txt.textContent='Clé Finnhub invalide'; }
+}
 
 function setF(k,v,u,d,dec=0){ F[k]=parseFloat(v); document.getElementById('v-'+k).textContent=`${d} ${dec?parseFloat(v).toFixed(1):v}${u}`; }
 function setCap(v){ F.mc=parseInt(v); document.getElementById('v-mc').textContent=`≥ ${v} Mds`; }
@@ -514,12 +523,12 @@ function pickM(o,keys){ if(!o) return null; for(const k of keys){ const v=o[k]; 
 async function fh(path){
   await rateGate();
   const r=await fetch(`${FH}/${path}${path.includes('?')?'&':'?'}token=${fhKey()}`);
-  if(r.status===401||r.status===403){ const e=new Error('Finnhub : accès refusé ('+r.status+'). Endpoint non inclus dans le plan, ou clé invalide.'); e.status=r.status; throw e; }
-  if(r.status===429){ const e=new Error('Finnhub : débit dépassé (429).'); e.status=429; throw e; }
+  if(r.status===401){ const e=new Error('Clé Finnhub invalide ou incomplète. Recopie-la entièrement depuis ton tableau de bord Finnhub (champ « API Key »), sans espace.'); e.status=401; throw e; }
+  if(r.status===403){ const e=new Error('Finnhub : cet endpoint n\'est pas inclus dans ton plan (403).'); e.status=403; throw e; }
+  if(r.status===429){ const e=new Error('Finnhub : débit dépassé (429). Réduis « sociétés par lancement » ou patiente une minute.'); e.status=429; throw e; }
   if(!r.ok){ const e=new Error('Finnhub HTTP '+r.status); e.status=r.status; throw e; }
   return r.json();
 }
-async function fmp(path){ const k=fmpKey(); if(!k) return null; try{ const r=await fetch(`${FMP}/${path}${path.includes('?')?'&':'?'}apikey=${k}`); if(!r.ok) return null; return await r.json(); }catch(e){ return null; } }
 
 /* ── UNIVERS (1 appel) ── */
 async function fetchUniverse(){
@@ -610,6 +619,15 @@ async function enrich(sym, name){
   const dy=pickM(M,['currentDividendYieldTTM','dividendYieldIndicatedAnnual','dividendYield5Y']);
   const rg=pickM(M,['revenueGrowth5Y','revenueGrowthTTMYoy','revenueGrowth3Y']);
 
+  // Performance du cours (champs gratuits Finnhub — aucun appel supplémentaire)
+  const perf={
+    high52:pickM(M,['52WeekHigh']), low52:pickM(M,['52WeekLow']),
+    r5d:pickM(M,['5DayPriceReturnDaily']), r1m:pickM(M,['monthToDatePriceReturnDaily','13WeekPriceReturnDaily']),
+    r3m:pickM(M,['13WeekPriceReturnDaily']), r6m:pickM(M,['26WeekPriceReturnDaily']),
+    r1y:pickM(M,['52WeekPriceReturnDaily']), ytd:pickM(M,['yearToDatePriceReturnDaily']),
+    beta:pickM(M,['beta'])
+  };
+
   // Rachats estimés : CAGR du CA/action vs CAGR du CA total
   let buyback=null, bbYears=0;
   const sps=Array.isArray(SER.salesPerShare)?SER.salesPerShare.filter(x=>x&&x.v>0):[];
@@ -635,7 +653,7 @@ async function enrich(sym, name){
     C[l]={val,ok,warn:!ok&&warn,u}; if(ok) score+=10; else if(warn) score+=4;
   };
   chk('CA 5A',rg,F.rg,'g','%'); chk('Marge',nm,F.nm,'g','%'); chk('ROIC',roce,F.roce,'g','%');
-  chk('Rachats',buyback,F.bb,'g','%'); chk('C.Ratio',cr,F.cr,'g'); chk('Gearing',gearing,F.ge,'l','%');
+  chk('Rachats',buyback,0,'g','%'); chk('C.Ratio',cr,F.cr,'g'); chk('Gearing',gearing,F.ge,'l','%');
   chk('Payout',po,F.po,'l','%'); chk('P/B',pb,F.pb,'l');
   C['Div']={val:dy,ok:hasDiv,warn:false,u:'%'}; if(hasDiv) score+=10;
   C['Capi']={val:cap,ok:cap>=F.mc,warn:false,u:'Md'}; if(cap>=F.mc) score+=10;
@@ -645,7 +663,7 @@ async function enrich(sym, name){
   return { sym, name:p.name||name||sym, sector, exch:p.exchange||'US', mktCap:cap,
     price:0, change:0, logo:p.logo||'', desc:'', currency:p.currency||'USD',
     industry:p.finnhubIndustry||'', shares:num(p.shareOutstanding), web:p.weburl||'',
-    score, C, bbYears, series:{ sps, netMargin:SER.netMargin||[], eps:SER.eps||[] },
+    score, C, bbYears, perf, series:{ sps, netMargin:SER.netMargin||[], eps:SER.eps||[] },
     R:{nm,cr,po,pb,dy,roe,de:gearing,roce,rg,buyback} };
 }
 
@@ -654,7 +672,7 @@ function passes(s){
   const excluded=SECTORS.filter(x=>x.off).map(x=>x.k);
   if(excluded.includes(s.sector)) return false;
   if(document.getElementById('t-div').checked && !((s.R.dy>0)||(s.R.po>0))) return false;
-  if(document.getElementById('t-bb').checked && !(s.R.buyback>0)) return false;
+  if(document.getElementById('t-buy').checked && !(s.R.buyback>0)) return false;
   return true;
 }
 
@@ -770,12 +788,13 @@ async function openModal(sym){
   document.getElementById('f-num').style.color=f>=7?'var(--pos)':f>=5?'var(--warn)':'var(--neg)';
   document.getElementById('f-dots').innerHTML=Array(9).fill(0).map((_,i)=>`<div class="f-dot ${i<f?'on':'off'}"></div>`).join('');
   document.getElementById('f-interp').textContent=f>=8?'Excellente solidité financière — profil de grande qualité.':f>=6?'Bonne solidité — quelques points à surveiller.':'Solidité modérée — à approfondir.';
-  document.getElementById('m-prov').innerHTML=`<b>Source :</b> Finnhub (fondamentaux, ratios en temps réel)${fmpKey()?' · FMP (cours sur 1 an)':' · <span style="color:var(--warn)">cours 1 an indisponible — ajoute une clé FMP</span>'}. Les rachats sont estimés sur ~${s.bbYears||0} ans.`;
+  document.getElementById('m-prov').innerHTML=`<b>Source :</b> Finnhub — fondamentaux et ratios en temps réel. Les rachats sont estimés sur ~${s.bbYears||0} ans (croissance du CA/action vs CA total).`;
   document.getElementById('overlay').classList.add('open'); document.body.style.overflow='hidden';
   ['n-price','n-sps','n-margin','n-eps'].forEach(id=>document.getElementById(id).innerHTML='&nbsp;');
   killCharts();
   drawSeriesCharts(s);
-  await drawPrice(sym);
+  if(!(s.price>0)){ try{ const q=await fh(`quote?symbol=${sym}`); s.price=num(q.c); s.change=num(q.dp); cacheSet(sym,s); }catch(e){} }
+  drawPerformance(s);
 }
 
 function overlayClose(e){ if(e.target===document.getElementById('overlay')) closeModal(); }
@@ -815,22 +834,22 @@ function drawSeriesCharts(s){
   else emptyChart(document.getElementById('c-eps'),'Série indisponible (Finnhub)');
 }
 
-async function drawPrice(sym){
+function drawPerformance(s){
   const el=document.getElementById('c-price'), note=document.getElementById('n-price');
-  if(!fmpKey()){ emptyChart(el,'Ajoute une clé FMP pour afficher l\'historique de cours'); return; }
-  try{
-    const d=await fmp(`historical-price-eod/full?symbol=${sym}`);
-    let h=Array.isArray(d)?d:(d&&d.historical)||[];
-    h=h.slice(0,260).reverse();
-    if(!h.length){ emptyChart(el,'Cours indisponible'); return; }
-    const labels=h.map(x=>(x.date||'').slice(5)), prices=h.map(x=>num(x.close));
-    const first=prices[0], last=prices[prices.length-1], perf=first?((last-first)/first*100):0;
-    note.innerHTML=`Sur 1 an : <b class="${perf<0?'neg':''}">${perf>=0?'+':''}${perf.toFixed(1)}%</b>`;
-    charts.price=new Chart(el,{type:'line',plugins:[crosshair],
-      data:{labels,datasets:[{data:prices,borderColor:'#0066cc',borderWidth:2,pointRadius:0,pointHoverRadius:6,pointHoverBackgroundColor:'#0066cc',pointHoverBorderColor:'#fff',pointHoverBorderWidth:3,tension:0.35,fill:true,
-        backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,180);g.addColorStop(0,'rgba(0,102,204,0.18)');g.addColorStop(1,'rgba(0,102,204,0)');return g;}}]},
-      options:baseOpts()});
-  }catch(e){ emptyChart(el,'Cours indisponible'); }
+  const pf=s.perf||{};
+  // Fourchette 52 semaines + cours actuel (note)
+  if(pf.low52!=null && pf.high52!=null && pf.high52>pf.low52){
+    const px=s.price>0?s.price:null;
+    let pos = px!=null ? Math.max(0,Math.min(100,(px-pf.low52)/(pf.high52-pf.low52)*100)) : null;
+    const range=`<div style="margin-top:2px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-48)"><span>52s bas ${pf.low52.toFixed(0)}</span><span>${px!=null?('cours '+px.toFixed(2)):''}</span><span>52s haut ${pf.high52.toFixed(0)}</span></div><div style="position:relative;height:6px;background:var(--divider-soft);border-radius:9999px;margin-top:5px">${pos!=null?`<div style="position:absolute;top:-3px;left:${pos}%;width:12px;height:12px;margin-left:-6px;border-radius:9999px;background:var(--primary);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>`:''}</div></div>`;
+    note.innerHTML=range;
+  } else note.innerHTML='&nbsp;';
+  // Rendements sur différentes périodes
+  const pts=[['5J',pf.r5d],['3M',pf.r3m],['6M',pf.r6m],['1A',pf.r1y],['YTD',pf.ytd]].filter(p=>p[1]!=null&&!Number.isNaN(p[1]));
+  if(!pts.length){ emptyChart(el,'Performance indisponible (Finnhub)'); return; }
+  charts.price=new Chart(el,{type:'bar',
+    data:{labels:pts.map(p=>p[0]),datasets:[{data:pts.map(p=>p[1]),backgroundColor:pts.map(p=>p[1]<0?'#cc2f2f':'#1d8a4e'),hoverBackgroundColor:'#0066cc',borderRadius:6,maxBarThickness:34}]},
+    options:baseOpts({interaction:{mode:'nearest',intersect:true},hover:{mode:'nearest',intersect:true},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw>=0?'+':''}${num(c.raw).toFixed(1)}%`}}}})});
 }
 function emptyChart(canvas,msg){ if(canvas&&canvas.parentElement) canvas.parentElement.innerHTML=`<div class="chart-empty">${msg||'Données indisponibles'}</div>`; }
 
