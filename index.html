@@ -322,7 +322,9 @@
     <div class="group-title">Croissance &amp; rentabilité</div>
     <div class="slider-field"><div class="slider-head"><span class="slider-label">Croissance CA · 5 ans</span><span class="slider-value" id="v-rg">≥ 10%</span></div><input type="range" min="0" max="50" value="10" oninput="setF('rg',this.value,'%','≥')"></div>
     <div class="slider-field"><div class="slider-head"><span class="slider-label">Marge nette</span><span class="slider-value" id="v-nm">≥ 10%</span></div><input type="range" min="0" max="50" value="10" oninput="setF('nm',this.value,'%','≥')"></div>
-    <div class="slider-field"><div class="slider-head"><span class="slider-label">ROIC / ROCE</span><span class="slider-value" id="v-roce">≥ 10%</span></div><input type="range" min="0" max="50" value="10" oninput="setF('roce',this.value,'%','≥')"></div>
+    <div class="slider-field"><div class="slider-head"><span class="slider-label">ROIC</span><span class="slider-value" id="v-roic">≥ 10%</span></div><input type="range" min="0" max="50" value="10" oninput="setF('roic',this.value,'%','≥')"></div>
+    <div class="slider-field"><div class="slider-head"><span class="slider-label">ROCE</span><span class="slider-value" id="v-roce">≥ 10%</span></div><input type="range" min="0" max="50" value="10" oninput="setF('roce',this.value,'%','≥')"></div>
+    <div class="chip-note" style="margin-top:-6px">ROIC = `roicTTM`. ROCE = rendement du capital tangible (`rotcTTM`), le champ le plus proche fourni par Finnhub.</div>
 
     <div class="group-title">Rachats d'actions</div>
     <div class="toggle-row"><span>Rachète ses actions</span><label class="switch"><input type="checkbox" id="t-buy"><span class="switch-track"></span></label></div>
@@ -335,6 +337,8 @@
 
     <div class="group-title">Valorisation &amp; taille</div>
     <div class="slider-field"><div class="slider-head"><span class="slider-label">P/B Ratio</span><span class="slider-value" id="v-pb">≤ 10.0</span></div><input type="range" min="0" max="30" step="0.5" value="10" oninput="setF('pb',this.value,'','≤',1)"></div>
+    <div class="slider-field"><div class="slider-head"><span class="slider-label">PER</span><span class="slider-value" id="v-pe">≤ 30</span></div><input type="range" min="0" max="80" value="30" oninput="setF('pe',this.value,'','≤')"></div>
+    <div class="slider-field"><div class="slider-head"><span class="slider-label">P/FCF</span><span class="slider-value" id="v-pfcf">≤ 30</span></div><input type="range" min="0" max="80" value="30" oninput="setF('pfcf',this.value,'','≤')"></div>
     <div class="slider-field"><div class="slider-head"><span class="slider-label">Capitalisation min.</span><span class="slider-value" id="v-mc">≥ 10 Mds</span></div><input type="range" min="1" max="500" value="10" oninput="setCap(this.value)"></div>
 
     <div class="group-title">Critères qualitatifs</div>
@@ -379,8 +383,13 @@
 
     <div class="tab-panel" id="panel-watchlist">
       <div class="results-bar">
-        <div><div class="results-title">Ma watchlist</div><div class="results-sub" id="wSub">Vos entreprises suivies</div></div>
-        <button class="seg" style="border:none;padding:0"><span onclick="clearWatch()" style="border:1px solid var(--hairline);padding:8px 16px;border-radius:9999px;cursor:pointer;font-size:14px;color:var(--ink-80)">Tout effacer</span></button>
+        <div><div class="results-title">Ma watchlist</div><div class="results-sub" id="wSub">Vos entreprises suivies — sauvegardées automatiquement</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="file" id="watchFile" accept="application/json,.json" style="display:none" onchange="importWatch(this.files[0]);this.value='';">
+          <span onclick="document.getElementById('watchFile').click()" style="border:1px solid var(--hairline);padding:8px 16px;border-radius:9999px;cursor:pointer;font-size:14px;color:var(--ink-80)">Importer</span>
+          <span onclick="exportWatch()" style="border:1px solid var(--hairline);padding:8px 16px;border-radius:9999px;cursor:pointer;font-size:14px;color:var(--ink-80)">Exporter</span>
+          <span onclick="clearWatch()" style="border:1px solid var(--hairline);padding:8px 16px;border-radius:9999px;cursor:pointer;font-size:14px;color:var(--ink-80)">Tout effacer</span>
+        </div>
       </div>
       <div id="watchContent"></div>
     </div>
@@ -460,15 +469,15 @@ function sectorOf(industry){
 function sectorLabel(k){ const m=SECTORS.find(s=>s.k===k); return m?m.n:'Autre'; }
 
 let results=[], watch=JSON.parse(localStorage.getItem('el-watch')||'[]'), charts={}, sortMode='score', universe=null;
-const F={rg:10,nm:10,roce:10,cr:1,ge:150,po:70,pb:10,mc:10};
+const F={rg:10,nm:10,roic:10,roce:10,cr:1,ge:150,po:70,pb:10,pe:30,pfcf:30,mc:10};
 let searchTimer=null;
 
 /* ── CACHE (18h) ── */
 const CACHE_TTL=18*3600*1000;
-function cacheGet(sym){ try{ const c=JSON.parse(localStorage.getItem('el-c-'+sym)||'null'); if(c&&Date.now()-c.ts<CACHE_TTL) return c.data; }catch(e){} return null; }
-function cacheSet(sym,data){ try{ localStorage.setItem('el-c-'+sym,JSON.stringify({ts:Date.now(),data})); }catch(e){} updateCacheInfo(); }
-function cacheCount(){ let n=0; for(let i=0;i<localStorage.length;i++){ if((localStorage.key(i)||'').startsWith('el-c-')) n++; } return n; }
-function clearCache(){ const keys=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('el-c-')) keys.push(k); } keys.forEach(k=>localStorage.removeItem(k)); updateCacheInfo(); toast('Cache vidé ('+keys.length+' sociétés).'); }
+function cacheGet(sym){ try{ const c=JSON.parse(localStorage.getItem('el-c2-'+sym)||'null'); if(c&&Date.now()-c.ts<CACHE_TTL) return c.data; }catch(e){} return null; }
+function cacheSet(sym,data){ try{ localStorage.setItem('el-c2-'+sym,JSON.stringify({ts:Date.now(),data})); }catch(e){} updateCacheInfo(); }
+function cacheCount(){ let n=0; for(let i=0;i<localStorage.length;i++){ if((localStorage.key(i)||'').startsWith('el-c2-')) n++; } return n; }
+function clearCache(){ const keys=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith('el-c2-')) keys.push(k); } keys.forEach(k=>localStorage.removeItem(k)); updateCacheInfo(); toast('Cache vidé ('+keys.length+' sociétés).'); }
 function updateCacheInfo(){ document.getElementById('cacheInfo').textContent=cacheCount()+' en cache'; }
 
 /* ── LIMITEUR DE DÉBIT (≈55 appels / 60s) ── */
@@ -638,11 +647,13 @@ async function enrich(sym, name){
   if(!cap){ const mc=pickM(M,['marketCapitalization']); if(mc) cap=mc/1000; }
   const sector=sectorOf(p.finnhubIndustry);
 
-  // Ratios (Finnhub renvoie des pourcentages directs pour marges/ROE/ROIC/yield/payout)
-  const roe=pickM(M,['roeTTM','roeRfy','roeAnnual']);
-  const roce=pickM(M,['roicTTM','roiTTM','roicAnnual','rotcTTM']);
+  // Ratios (Finnhub renvoie des pourcentages directs pour marges/ROIC/yield/payout)
+  const roic=pickM(M,['roicTTM','roicAnnual','roic']);
+  const roce=pickM(M,['rotcTTM','rotcAnnual','rotc']); // Finnhub n'a pas de ROCE étiqueté : rendement du capital tangible (proxy ROCE)
   const nm=pickM(M,['netMarginTTM','netProfitMarginTTM','netMarginAnnual','netMargin']);
   const pb=pickM(M,['pbAnnual','pbQuarterly','pb','pbTTM']);
+  const pe=pickM(M,['peTTM','peBasicExclExtraTTM','peNormalizedAnnual','peAnnual','pe']);
+  const pfcf=pickM(M,['pfcfShareTTM','pfcfTTM','pfcfShareAnnual','pfcf']);
   const cr=pickM(M,['currentRatioAnnual','currentRatioQuarterly','currentRatio']);
   let deRaw=pickM(M,['totalDebt/totalEquityAnnual','totalDebt/totalEquityQuarterly','totalDebtToEquityAnnual','totalDebtToEquityQuarterly','totalDebtToEquity','longTermDebt/equityAnnual']);
   let gearing = deRaw==null?null:(deRaw>20?deRaw:deRaw*100); // ratio -> %, avec garde-fou
@@ -675,7 +686,7 @@ async function enrich(sym, name){
 
   const hasDiv=(dy!=null&&dy>0)||(po!=null&&po>0);
 
-  // ── SCORE (11 critères × 10, normalisé /100) ──
+  // ── SCORE (13 critères × 10, normalisé /100) ──
   let score=0; const C={};
   const chk=(l,val,th,dir='g',u='')=>{
     if(val===null||val===undefined||Number.isNaN(val)){ C[l]={val:null,ok:false,warn:false,u}; return; }
@@ -683,19 +694,19 @@ async function enrich(sym, name){
     const warn=dir==='g'?val>=th*0.8:val<=th*1.2;
     C[l]={val,ok,warn:!ok&&warn,u}; if(ok) score+=10; else if(warn) score+=4;
   };
-  chk('CA 5A',rg,F.rg,'g','%'); chk('Marge',nm,F.nm,'g','%'); chk('ROIC',roce,F.roce,'g','%');
+  chk('CA 5A',rg,F.rg,'g','%'); chk('Marge',nm,F.nm,'g','%');
+  chk('ROIC',roic,F.roic,'g','%'); chk('ROCE',roce,F.roce,'g','%');
   chk('Rachats',buyback,0,'g','%'); chk('C.Ratio',cr,F.cr,'g'); chk('Gearing',gearing,F.ge,'l','%');
-  chk('Payout',po,F.po,'l','%'); chk('P/B',pb,F.pb,'l');
+  chk('Payout',po,F.po,'l','%'); chk('P/B',pb,F.pb,'l'); chk('PER',pe,F.pe,'l'); chk('P/FCF',pfcf,F.pfcf,'l');
   C['Div']={val:dy,ok:hasDiv,warn:false,u:'%'}; if(hasDiv) score+=10;
   C['Capi']={val:cap,ok:cap>=F.mc,warn:false,u:'Md'}; if(cap>=F.mc) score+=10;
-  C['ROE']={val:roe,ok:roe!=null&&roe>=10,warn:roe!=null&&roe>=8&&roe<10,u:'%'}; if(roe!=null&&roe>=10) score+=10; else if(roe!=null&&roe>=8) score+=4;
-  score=Math.round(score/110*100);
+  score=Math.round(score/130*100);
 
   return { sym, name:p.name||name||sym, sector, exch:p.exchange||'US', mktCap:cap,
     price:0, change:0, logo:p.logo||'', desc:'', currency:p.currency||'USD',
     industry:p.finnhubIndustry||'', shares:num(p.shareOutstanding), web:p.weburl||'',
     score, C, bbYears, perf, series:{ sps, netMargin:SER.netMargin||[], eps:SER.eps||[] },
-    R:{nm,cr,po,pb,dy,roe,de:gearing,roce,rg,buyback} };
+    R:{nm,cr,po,pb,pe,pfcf,dy,de:gearing,roic,roce,rg,buyback} };
 }
 
 function passes(s){
@@ -735,6 +746,11 @@ function card(s){
   const dots=Object.keys(s.C).map(k=>{ const c=s.C[k]; const cl=c.val===null?'crit-na':c.ok?'crit-ok':c.warn?'crit-warn':'crit-fail'; const ic=c.val===null?'–':c.ok?'✓':c.warn?'~':'✕'; return `<div class="crit"><div class="crit-dot ${cl}">${ic}</div><div class="crit-label">${k}</div></div>`; }).join('');
   const bbTxt=s.R.buyback==null?'Rachats : n/d':`Rachats ${s.R.buyback>=0?'+':''}${s.R.buyback.toFixed(1)}%/an · ~${s.bbYears} ans`;
   const priceTxt=s.price>0?`${s.currency} ${s.price.toFixed(2)}<span class="chg ${up?'chg-pos':'chg-neg'}">${up?'+':''}${(s.change||0).toFixed(2)}%</span>`:'<span style="color:var(--ink-48)">—</span>';
+  const R=s.R||{}, r1y=s.perf?s.perf.r1y:null;
+  const perTxt=R.pe!=null?R.pe.toFixed(1):'n/d';
+  const dyTxt=(R.dy!=null&&R.dy>0)?R.dy.toFixed(2)+'%':'—';
+  const r1yTxt=r1y!=null?`${r1y>=0?'+':''}${r1y.toFixed(1)}%`:'n/d';
+  const r1yCol=r1y==null?'var(--ink-48)':r1y>=0?'var(--pos)':'var(--neg)';
   return `<div class="card" onclick="openModal('${s.sym}')">
     <div class="card-top">
       <div class="ident"><div class="logo">${logoHTML(s)}</div><div><div class="name">${s.name.length>22?s.name.slice(0,22)+'…':s.name}</div><div class="meta">${s.sym} · ${sectorLabel(s.sector)}</div></div></div>
@@ -742,6 +758,7 @@ function card(s){
     </div>
     <div class="score-block"><div class="score-row"><span class="score-cap">Score qualité</span><span class="score-num" style="color:${sColor(s.score)}">${s.score}<span style="font-size:15px;color:var(--ink-48)">/100</span></span></div><div class="score-track"><div class="score-bar" style="width:${s.score}%;background:${sColor(s.score)}"></div></div></div>
     <div class="crit-grid">${dots}</div>
+    <div style="display:flex;gap:16px;font-size:12px;color:var(--ink-48);margin-bottom:14px"><span>PER <b style="color:var(--ink-80)">${perTxt}</b></span><span>Div <b style="color:var(--ink-80)">${dyTxt}</b></span><span>Cours 1A <b style="color:${r1yCol}">${r1yTxt}</b></span></div>
     <div class="card-foot"><div><span class="cap">${fcap(s.mktCap)}</span><div class="buyrate">${bbTxt}</div></div><span class="price">${priceTxt}</span></div>
   </div>`;
 }
@@ -789,16 +806,26 @@ async function openFromSearch(sym){
 document.addEventListener('click',e=>{ if(!e.target.closest('.search-wrap')) document.getElementById('searchResults').classList.remove('open'); });
 
 /* ── MODAL ── */
+function critCol(c){ if(!c||c.val==null) return 'var(--ink-48)'; return c.ok?'var(--pos)':c.warn?'var(--warn)':'var(--neg)'; }
 function renderMetrics(s){
-  const R=s.R||{};
-  const mc=(l,v,ok)=>`<div class="metric"><div class="metric-l">${l}</div><div class="metric-v" style="color:${ok?'var(--pos)':'var(--neg)'}">${v}</div></div>`;
+  const R=s.R||{}, C=s.C||{};
+  const tile=(l,v,col)=>`<div class="metric"><div class="metric-l">${l}</div><div class="metric-v" style="color:${col}">${v}</div></div>`;
+  const byC=(l,label,v)=>tile(label,v,critCol(C[l]));
   const bbv=R.buyback==null?'n/d':(R.buyback>=0?'+':'')+R.buyback.toFixed(1)+'%';
   document.getElementById('m-metrics').innerHTML=[
-    mc('Marge nette',fmt(R.nm,'%'),R.nm!=null&&R.nm>=F.nm), mc('ROIC',fmt(R.roce,'%'),R.roce!=null&&R.roce>=F.roce),
-    mc('Rachats/an',bbv,R.buyback>0), mc('Current Ratio',fmt(R.cr,'',2),R.cr!=null&&R.cr>=F.cr),
-    mc('Gearing',fmt(R.de,'%',0),R.de!=null&&R.de<=F.ge), mc('Payout',fmt(R.po,'%',0),R.po!=null&&R.po<=F.po),
-    mc('P/B',fmt(R.pb,'',2),R.pb!=null&&R.pb<=F.pb), mc('Div. Yield',fmt(R.dy,'%'),R.dy>0),
-    mc('ROE',fmt(R.roe,'%'),R.roe!=null&&R.roe>=10), mc('CA 5A',fmt(R.rg,'%'),R.rg!=null&&R.rg>=F.rg)
+    byC('Marge','Marge nette',fmt(R.nm,'%')),
+    byC('ROIC','ROIC',fmt(R.roic,'%')),
+    byC('ROCE','ROCE',fmt(R.roce,'%')),
+    byC('CA 5A','Croissance CA 5A',fmt(R.rg,'%')),
+    byC('Gearing','Gearing',fmt(R.de,'%',0)),
+    byC('Rachats','Rachats/an',bbv),
+    byC('C.Ratio','Current Ratio',fmt(R.cr,'',2)),
+    byC('Payout','Payout',fmt(R.po,'%',0)),
+    byC('P/B','P/B',fmt(R.pb,'',2)),
+    byC('PER','PER',fmt(R.pe,'',1)),
+    byC('P/FCF','P/FCF',fmt(R.pfcf,'',1)),
+    tile('Rendement div.',(R.dy!=null&&R.dy>0)?fmt(R.dy,'%',2):'—',(R.dy>0)?'var(--pos)':'var(--ink-48)'),
+    byC('Capi','Capitalisation',fcap(s.mktCap))
   ].join('');
 }
 async function openModal(sym){
@@ -810,16 +837,17 @@ async function openModal(sym){
   document.getElementById('m-sector').textContent=s.industry||sectorLabel(s.sector);
   renderMetrics(s);
   const R=s.R||{};
-  const tags=[]; if(R.rg>=20)tags.push('Forte croissance'); if(R.nm>=15)tags.push('Marge élevée'); if(R.buyback>=1)tags.push('Rachats réguliers'); if(R.dy>2)tags.push('Dividende solide'); if(R.pb!=null&&R.pb<3)tags.push('Valorisation attractive'); if(R.roce>=15)tags.push('ROIC excellent');
+  const tags=[]; if(R.rg>=20)tags.push('Forte croissance'); if(R.nm>=15)tags.push('Marge élevée'); if(R.buyback>=1)tags.push('Rachats réguliers'); if(R.dy>2)tags.push('Dividende solide'); if(R.pb!=null&&R.pb<3)tags.push('Valorisation attractive'); if(R.roic>=15)tags.push('ROIC excellent');
   document.getElementById('m-tags').innerHTML=tags.map(t=>`<span class="tag">${t}</span>`).join('');
-  document.getElementById('m-desc').textContent=s.web?`${s.name} — ${s.industry||'secteur n/d'}. Site : ${s.web.replace(/^https?:\/\//,'')}`:`${s.name} — ${s.industry||'secteur n/d'}.`;
-  document.getElementById('m-crit').innerHTML=Object.entries(s.C).map(([k,c])=>{ const col=c.val===null?'var(--ink-48)':c.ok?'var(--pos)':c.warn?'var(--warn)':'var(--neg)'; const v=c.val===null?'N/A':(c.val.toFixed(c.u==='Md'?0:(k==='Rachats'?1:2))+(c.u||'')); return `<div class="crit-line"><span class="crit-line-n">${k==='Rachats'?'Rachats/an':k==='Capi'?'Capitalisation':k}</span><span class="crit-line-v" style="color:${col}">${v}</span></div>`; }).join('');
+  const site=s.web?`<a href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600">Visiter le site ↗</a>`:'';
+  document.getElementById('m-desc').innerHTML=`${s.name} — ${s.industry||'secteur n/d'}.${site?'<br>'+site:''}`;
+  document.getElementById('m-crit').innerHTML=Object.entries(s.C).map(([k,c])=>{ const col=critCol(c); const v=c.val===null?'N/A':(c.val.toFixed(c.u==='Md'?0:(k==='Rachats'?1:2))+(c.u||'')); const lbl=k==='Rachats'?'Rachats/an':k==='Capi'?'Capitalisation':k==='CA 5A'?'Croissance CA 5A':k; return `<div class="crit-line"><span class="crit-line-n">${lbl}</span><span class="crit-line-v" style="color:${col}">${v}</span></div>`; }).join('');
   const f=fscore(s);
   document.getElementById('f-num').textContent=f;
   document.getElementById('f-num').style.color=f>=7?'var(--pos)':f>=5?'var(--warn)':'var(--neg)';
   document.getElementById('f-dots').innerHTML=Array(9).fill(0).map((_,i)=>`<div class="f-dot ${i<f?'on':'off'}"></div>`).join('');
   document.getElementById('f-interp').textContent=f>=8?'Excellente solidité financière — profil de grande qualité.':f>=6?'Bonne solidité — quelques points à surveiller.':'Solidité modérée — à approfondir.';
-  document.getElementById('m-prov').innerHTML=`<b>Source :</b> Finnhub — fondamentaux et ratios en temps réel. Les rachats sont estimés sur ~${s.bbYears||0} ans (croissance du CA/action vs CA total).`;
+  document.getElementById('m-prov').innerHTML=`<b>Source :</b> Finnhub — fondamentaux et ratios en temps réel. Rachats estimés sur ~${s.bbYears||0} ans (CA/action vs CA total). ROCE = rendement du capital tangible (proxy Finnhub).`;
   document.getElementById('overlay').classList.add('open'); document.body.style.overflow='hidden';
   ['n-price','n-sps','n-margin','n-eps'].forEach(id=>document.getElementById(id).innerHTML='&nbsp;');
   killCharts();
@@ -850,18 +878,23 @@ function seriesXY(ser){ if(!Array.isArray(ser)) return null; const a=ser.filter(
 function lineChart(el, data, opts={}){ return new Chart(el,{type:'line',plugins:[crosshair],data:{labels:data.labels,datasets:[{data:data.vals,borderColor:'#0066cc',borderWidth:2.5,tension:0.35,fill:true,pointRadius:3,pointBackgroundColor:'#0066cc',pointBorderColor:'#fff',pointBorderWidth:2,pointHoverRadius:7,backgroundColor:'rgba(0,102,204,0.08)'}]},options:baseOpts(opts)}); }
 function barChart(el, data, opts={}){ return new Chart(el,{type:'bar',data:{labels:data.labels,datasets:[{data:data.vals,backgroundColor:data.vals.map(v=>v<0?'#cc2f2f':'#1d1d1f'),hoverBackgroundColor:'#0066cc',borderRadius:6,maxBarThickness:34}]},options:baseOpts(Object.assign({interaction:{mode:'nearest',intersect:true},hover:{mode:'nearest',intersect:true}},opts))}); }
 
+function cagrNote(data){ if(!data||data.vals.length<2) return ''; const v0=data.vals[0], v1=data.vals[data.vals.length-1], n=data.vals.length-1; if(!(v0>0&&v1>0)) return ''; const g=(Math.pow(v1/v0,1/n)-1)*100; return `Croissance : <b class="${g<0?'neg':''}">${g>=0?'+':''}${g.toFixed(1)}%/an</b> sur ${n} ans`; }
 function drawSeriesCharts(s){
-  // CA/action (proxy croissance + rachats)
+  // CA/action (croissance + base de l'estimation des rachats)
   const sps=seriesXY(s.series.sps);
-  if(sps){ if(s.R.buyback!=null) document.getElementById('n-sps').innerHTML=`Rachats estimés : <b class="${s.R.buyback<0?'neg':''}">${s.R.buyback>=0?'+':''}${s.R.buyback.toFixed(1)}%/an</b>`; charts.sps=barChart(document.getElementById('c-sps'),sps); }
-  else emptyChart(document.getElementById('c-sps'),'Série indisponible (Finnhub)');
+  if(sps){
+    const cagr=cagrNote(sps);
+    const bb=s.R.buyback!=null?` · rachats estimés <b class="${s.R.buyback<0?'neg':''}">${s.R.buyback>=0?'+':''}${s.R.buyback.toFixed(1)}%/an</b>`:'';
+    document.getElementById('n-sps').innerHTML=(cagr||'&nbsp;')+bb;
+    charts.sps=barChart(document.getElementById('c-sps'),sps);
+  } else emptyChart(document.getElementById('c-sps'),'Série indisponible (Finnhub)');
   // Marge nette
   let nm=seriesXY(s.series.netMargin);
   if(nm){ if(Math.max(...nm.vals.map(Math.abs))<=2) nm.vals=nm.vals.map(v=>v*100); charts.margin=lineChart(document.getElementById('c-margin'),nm); }
   else emptyChart(document.getElementById('c-margin'),'Série indisponible (Finnhub)');
   // BPA
   const eps=seriesXY(s.series.eps);
-  if(eps) charts.eps=barChart(document.getElementById('c-eps'),eps);
+  if(eps){ document.getElementById('n-eps').innerHTML=cagrNote(eps)||'&nbsp;'; charts.eps=barChart(document.getElementById('c-eps'),eps); }
   else emptyChart(document.getElementById('c-eps'),'Série indisponible (Finnhub)');
 }
 
@@ -884,7 +917,7 @@ function drawPerformance(s){
 }
 function emptyChart(canvas,msg){ if(canvas&&canvas.parentElement) canvas.parentElement.innerHTML=`<div class="chart-empty">${msg||'Données indisponibles'}</div>`; }
 
-function fscore(s){ const r=s.R; let f=0; if(r.roe>0)f++; if(r.roce!=null&&r.roce>=10)f++; if(r.cr!=null&&r.cr>=1)f++; if(r.de!=null&&r.de<100)f++; if(r.nm!=null&&r.nm>0)f++; if(r.nm!=null&&r.nm>=8)f++; if((r.dy>0)||(r.po>0))f++; if(r.pb!=null&&r.pb<5&&r.pb>0)f++; if(r.buyback>0)f++; return f; }
+function fscore(s){ const r=s.R; let f=0; if(r.roic>0)f++; if(r.roce!=null&&r.roce>=10)f++; if(r.cr!=null&&r.cr>=1)f++; if(r.de!=null&&r.de<100)f++; if(r.nm!=null&&r.nm>0)f++; if(r.nm!=null&&r.nm>=8)f++; if((r.dy>0)||(r.po>0))f++; if(r.pb!=null&&r.pb<5&&r.pb>0)f++; if(r.buyback>0)f++; return f; }
 
 /* ── WATCHLIST ── */
 function togWatch(sym,btn){ const s=results.find(x=>x.sym===sym)||cacheGet(sym); if(!s) return; const i=watch.findIndex(w=>w.sym===sym);
@@ -896,6 +929,36 @@ function renderWatch(){ const el=document.getElementById('watchContent'); docume
   el.innerHTML=`<table class="wtable"><thead><tr><th>Entreprise</th><th>Ticker</th><th>Secteur</th><th>Rachats/an</th><th>Score</th><th>Prix</th><th>Capi</th><th></th></tr></thead><tbody>${watch.map(w=>`<tr onclick="openModal('${w.sym}')"><td style="font-weight:600">${(w.name||w.sym).slice(0,26)}</td><td style="color:var(--ink-48)">${w.sym}</td><td style="color:var(--ink-80)">${sectorLabel(w.sector)}</td><td style="color:${(w.R&&w.R.buyback>0)?'var(--pos)':'var(--ink-80)'}">${w.R&&w.R.buyback!=null?((w.R.buyback>=0?'+':'')+w.R.buyback.toFixed(1)+'%'):'n/d'}</td><td style="font-weight:600;color:${sColor(w.score)}">${w.score}/100</td><td>${w.currency||'USD'} ${(w.price||0).toFixed(2)}</td><td style="color:var(--ink-80)">${fcap(w.mktCap)}</td><td onclick="event.stopPropagation();rmWatch('${w.sym}')" style="color:var(--body-muted);cursor:pointer">✕</td></tr>`).join('')}</tbody></table>`; }
 function rmWatch(sym){ watch=watch.filter(w=>w.sym!==sym); localStorage.setItem('el-watch',JSON.stringify(watch)); renderWatch(); }
 function clearWatch(){ if(confirm('Vider toute la watchlist ?')){ watch=[]; localStorage.setItem('el-watch','[]'); renderWatch(); } }
+function exportWatch(){
+  if(!watch.length){ toast('Watchlist vide — rien à exporter.'); return; }
+  try{
+    const blob=new Blob([JSON.stringify(watch,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`equitylens-watchlist-${today()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast(`Watchlist exportée (${watch.length} entreprise${watch.length>1?'s':''}).`);
+  }catch(e){ toast('Échec de l\'export : '+(e.message||'')); }
+}
+function importWatch(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const arr=JSON.parse(r.result);
+      if(!Array.isArray(arr)) throw new Error('format invalide');
+      const bySym={}; watch.forEach(w=>bySym[w.sym]=w);
+      arr.forEach(w=>{ if(w&&w.sym) bySym[w.sym]=w; }); // fusion (les importées priment)
+      watch=Object.values(bySym);
+      localStorage.setItem('el-watch',JSON.stringify(watch));
+      renderWatch();
+      toast(`Watchlist importée — ${watch.length} entreprise${watch.length>1?'s':''} au total.`);
+    }catch(e){ toast('Fichier illisible : '+(e.message||'JSON invalide')); }
+  };
+  r.onerror=()=>toast('Impossible de lire le fichier.');
+  r.readAsText(file);
+}
 
 /* ── utils ── */
 async function pool(items, n, fn, onTick){ const out=[]; let i=0, done=0; async function w(){ while(i<items.length){ const idx=i++; try{ out[idx]=await fn(items[idx]); }catch(e){ out[idx]=null; } done++; onTick&&onTick(done,items.length); } } await Promise.all(Array.from({length:Math.min(n,items.length)},w)); return out; }
