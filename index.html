@@ -536,7 +536,7 @@ async function fh(path){
   return r.json();
 }
 
-/* ── UNIVERS (1 appel) ── */
+/* ── UNIVERS (1 appel, OPTIONNEL — n'est jamais bloquant) ── */
 async function fetchUniverse(){
   if(universe) return universe;
   const d=await fh(`stock/symbol?exchange=US`);
@@ -544,8 +544,10 @@ async function fetchUniverse(){
   const seen=new Set();
   const list=[];
   arr.forEach(x=>{
-    if(x.type!=='Common Stock') return;
-    const sym=x.symbol; if(!sym||sym.includes('.')||/[-]/.test(sym)) { /* on garde quand même BRK.B via seeds */ }
+    const sym=x&&x.symbol; if(!sym) return;
+    // filtre souple : on garde les actions ordinaires (et les types vides), on écarte ETF/fonds/warrants
+    const t=(x.type||'').toLowerCase();
+    if(t && !/common|stock|share|reit|adr/.test(t)) return;
     if(seen.has(sym)) return; seen.add(sym);
     list.push({sym, name:x.description||sym});
   });
@@ -559,36 +561,53 @@ async function run(){
   loading(true); results=[];
   const area=document.getElementById('results');
   try{
-    area.innerHTML=stateHTML('spinner','Récupération de l\'univers US…'); setProg(4);
-    const uni=await fetchUniverse();
+    setProg(4);
+    // 1) Les valeurs de référence sont TOUJOURS analysables (pas besoin de l'univers).
+    let ordered = SEEDS.map(s=>({sym:s, name:s}));
+    // 2) Extension optionnelle via l'univers US — un échec ici n'arrête PAS le screening.
+    let uniNote='';
+    try{
+      area.innerHTML=stateHTML('spinner','Récupération de l\'univers US…');
+      const uni=await fetchUniverse();
+      const seedSet=new Set(SEEDS);
+      const extra=uni.filter(u=>!seedSet.has(u.sym));
+      ordered=[...ordered, ...extra];
+      uniNote=`${uni.length.toLocaleString('fr-FR')} titres dans l'univers`;
+    }catch(e){
+      uniNote='univers étendu indisponible — analyse des grandes valeurs';
+    }
 
-    // Ordonner : valeurs prioritaires (seeds) d'abord, puis le reste
-    const bySym={}; uni.forEach(u=>bySym[u.sym]=u);
-    const seedList=SEEDS.filter(s=>bySym[s]).map(s=>bySym[s]);
-    const seedSet=new Set(SEEDS);
-    const rest=uni.filter(u=>!seedSet.has(u.sym));
-    let ordered=[...seedList, ...rest];
-
-    // Le cache est gratuit : on le traite en priorité, puis on complète avec du neuf jusqu'à maxRun
+    // 3) Budget : cache gratuit en priorité, puis du neuf jusqu'à maxRun
     const c=cfg();
     const cached=ordered.filter(u=>cacheGet(u.sym));
     const fresh=ordered.filter(u=>!cacheGet(u.sym)).slice(0, c.maxRun);
     const batch=[...cached.slice(0,400), ...fresh];
+    if(!batch.length){ area.innerHTML=stateHTML('warn','Rien à analyser','Aucune société à traiter. Augmente « sociétés par lancement ».'); loading(false); return; }
 
-    if(!batch.length){ area.innerHTML=stateHTML('warn','Univers vide','La liste de symboles est revenue vide. Vérifie ta clé Finnhub.'); loading(false); return; }
+    area.innerHTML=stateHTML('spinner',`Analyse de ${batch.length} sociétés (${uniNote})…`);
 
-    area.innerHTML=stateHTML('spinner',`Analyse de ${batch.length} sociétés (${Math.min(cached.length,400)} en cache, ${fresh.length} nouvelles)…`);
-
+    // 4) Enrichissement résilient. On retient la 1re vraie erreur pour diagnostiquer.
+    let firstErr=null;
     const enriched=await pool(batch,5, async u=>{
       const cd=cacheGet(u.sym); if(cd) return cd;
-      const e=await enrich(u.sym, u.name);
-      if(e) cacheSet(u.sym,e);
-      return e;
+      try{
+        const e=await enrich(u.sym, u.name);
+        if(e) cacheSet(u.sym,e);
+        return e;
+      }catch(err){ if(!firstErr) firstErr=err; return null; }
     },(d,t)=>setProg(8+(d/t)*78));
 
-    let valid=enriched.filter(e=>e&&passes(e));
+    const ok=enriched.filter(Boolean);
+    // Si AUCUNE société n'a pu être enrichie, c'est un blocage de fond → message clair.
+    if(!ok.length){
+      const msg=firstErr?firstErr.message:'Les fondamentaux Finnhub n\'ont renvoyé aucune donnée. Vérifie ta clé et ta connexion.';
+      area.innerHTML=stateHTML('warn','Impossible de charger les fondamentaux',msg);
+      loading(false); setTimeout(()=>setProg(0),900); return;
+    }
 
-    // Prix temps réel uniquement pour les sociétés qualifiées (1 appel chacune)
+    let valid=ok.filter(e=>passes(e));
+
+    // 5) Cours temps réel pour les sociétés qualifiées
     area.innerHTML=stateHTML('spinner',`Cours en temps réel (${valid.length})…`);
     await pool(valid, 5, async s=>{
       if(s.price>0) return;
@@ -596,7 +615,8 @@ async function run(){
     },(d,t)=>setProg(86+(d/t)*13));
 
     results=valid; setProg(100);
-    applySort(); updateStats(valid, batch.length);
+    applySort(); updateStats(valid, ok.length);
+    if(firstErr){ toast('Certaines sociétés n\'ont pas pu être chargées : '+firstErr.message); }
   }catch(e){
     const m=e.message||'Erreur inconnue';
     toast(m);
@@ -604,13 +624,18 @@ async function run(){
   }finally{ loading(false); setTimeout(()=>setProg(0),900); }
 }
 
-/* ── ENRICHISSEMENT (2 appels : profile2 + metric) ── */
+/* ── ENRICHISSEMENT (2 appels : profile2 + metric, tolérant aux pannes) ── */
 async function enrich(sym, name){
-  const [p,m]=await Promise.all([ fh(`stock/profile2?symbol=${sym}`), fh(`stock/metric?symbol=${sym}&metric=all`) ]);
+  const [pR,mR]=await Promise.allSettled([ fh(`stock/profile2?symbol=${sym}`), fh(`stock/metric?symbol=${sym}&metric=all`) ]);
+  // Si les DEUX échouent, on remonte l'erreur (pour diagnostic). Sinon on continue avec ce qu'on a.
+  if(pR.status!=='fulfilled' && mR.status!=='fulfilled'){ throw (pR.reason||mR.reason||new Error('Données indisponibles')); }
+  const p=(pR.status==='fulfilled'&&pR.value)?pR.value:{};
+  const m=(mR.status==='fulfilled')?mR.value:null;
   const M=(m&&m.metric)||{};
   const SER=(m&&m.series&&m.series.annual)||{};
 
-  const cap=num(p.marketCapitalization)/1000; // M$ -> Mds$
+  let cap=num(p.marketCapitalization)/1000; // M$ -> Mds$
+  if(!cap){ const mc=pickM(M,['marketCapitalization']); if(mc) cap=mc/1000; }
   const sector=sectorOf(p.finnhubIndustry);
 
   // Ratios (Finnhub renvoie des pourcentages directs pour marges/ROE/ROIC/yield/payout)
