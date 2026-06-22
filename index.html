@@ -945,6 +945,25 @@ function renderMetrics(s){
     byC('Capi','Capitalisation',fcap(s.mktCap))
   ].join('');
 }
+/* Description constructive composée à partir des données Finnhub disponibles
+   (le profil gratuit ne fournit pas de texte ; on le génère depuis les fondamentaux). */
+function sizeLabel(cap){ if(cap==null||!cap) return ''; if(cap>=200) return 'méga-capitalisation'; if(cap>=10) return 'grande capitalisation'; if(cap>=2) return 'capitalisation moyenne'; return 'petite capitalisation'; }
+function buildDescription(s){
+  const R=s.R||{}, parts=[];
+  const secteur=s.industry||sectorLabel(s.sector), taille=sizeLabel(s.mktCap);
+  let p1=`${s.name} est une entreprise du secteur ${secteur}`;
+  if(s.exch) p1+=`, cotée sur ${s.exch}`;
+  if(s.mktCap) p1+=`, avec une capitalisation boursière de ${fcap(s.mktCap)}${taille?` (${taille})`:''}`;
+  parts.push(p1+'.');
+  if(R.rev5!=null){ const sens=R.rev5>=0?`progressé de +${R.rev5.toFixed(0)}%`:`reculé de ${Math.abs(R.rev5).toFixed(0)}%`; const yrs=R.rev5n||5; const periode=yrs>1?`ces ${yrs} dernières années`:'la dernière année'; parts.push(`Sur ${periode}, son chiffre d'affaires par action a ${sens}.`); }
+  const rent=[]; if(R.nm!=null) rent.push(`une marge nette de ${R.nm.toFixed(0)}%`); if(R.roic!=null) rent.push(`un ROIC de ${R.roic.toFixed(0)}%`);
+  if(rent.length){ const qual=((R.roic!=null&&R.roic>=15)||(R.nm!=null&&R.nm>=20))?', traduisant une rentabilité solide':''; parts.push(`Elle dégage ${rent.join(' et ')}${qual}.`); }
+  const ret=[]; if(R.dy!=null&&R.dy>0) ret.push(`verse un dividende de ${R.dy.toFixed(2)}%`); if(R.buyback!=null&&R.buyback>=1) ret.push(`rachète régulièrement ses actions (~${R.buyback.toFixed(1)}%/an)`);
+  if(ret.length) parts.push(`Côté actionnaires, l'entreprise ${ret.join(' et ')}.`);
+  if(R.pe!=null){ const vlab=R.pe<=15?'une valorisation attractive':R.pe<=30?'une valorisation raisonnable':'une valorisation élevée'; parts.push(`Elle se traite à un PER de ${R.pe.toFixed(1)}, soit ${vlab}.`); }
+  if(R.de!=null){ const slab=R.de<=80?'un endettement maîtrisé':R.de<=150?'un endettement modéré':'un endettement élevé'; parts.push(`Son bilan présente ${slab} (gearing de ${R.de.toFixed(0)}%).`); }
+  return parts.join(' ');
+}
 async function openModal(sym){
   let s=results.find(x=>x.sym===sym)||watch.find(x=>x.sym===sym)||cacheGet(sym); if(!s) return;
   document.getElementById('m-logo').innerHTML=logoHTML(s);
@@ -957,9 +976,7 @@ async function openModal(sym){
   const tags=[]; if(R.rg>=20)tags.push('Forte croissance'); if(R.nm>=15)tags.push('Marge élevée'); if(R.buyback>=1)tags.push('Rachats réguliers'); if(R.dy>2)tags.push('Dividende solide'); if(R.pb!=null&&R.pb<3)tags.push('Valorisation attractive'); if(R.roic>=15)tags.push('ROIC excellent');
   document.getElementById('m-tags').innerHTML=tags.map(t=>`<span class="tag">${t}</span>`).join('');
   const site=s.web?`<a href="${s.web.startsWith('http')?s.web:'https://'+s.web}" target="_blank" rel="noopener" style="color:var(--brand);text-decoration:none;font-weight:600">Visiter le site ↗</a>`:'';
-  const descText = s.desc && s.desc.length>10
-    ? s.desc
-    : `${s.name} est une entreprise du secteur ${s.industry||'non renseigné'}.`;
+  const descText = (s.desc && s.desc.length>40) ? s.desc : buildDescription(s);
   document.getElementById('m-desc').innerHTML=descText+(site?'<br><br>'+site:'');
   document.getElementById('m-crit').innerHTML=Object.entries(s.C).map(([k,c])=>{ const col=critCol(c); const v=c.val===null?'N/A':(k==='CA 5A'?((c.val>=0?'+':'')+c.val.toFixed(0)+'%'):(c.val.toFixed(c.u==='Md'?0:(k==='Rachats'?1:2))+(c.u||''))); const lbl=k==='Rachats'?'Rachats/an':k==='Capi'?'Capitalisation':k==='CA 5A'?'Hausse CA ~5 ans':k; return `<div class="crit-line"><span class="crit-line-n">${lbl}</span><span class="crit-line-v" style="color:${col}">${v}</span></div>`; }).join('');
   const f=fscore(s);
@@ -1080,21 +1097,29 @@ function clearWatch(){ if(confirm('Vider toute la watchlist ?')){ watch=[]; loca
 function exportWatch(){
   if(!watch.length){ toast('Watchlist vide — rien à exporter.'); return; }
   try{
-    const cols=['Nom','Ticker','Secteur','Industrie','Capitalisation (Mds$)',
-      'Score','Prix','Devise','Marge nette (%)','ROIC (%)','ROCE (%)',
-      'Hausse CA 5A (%)','Gearing (%)','Rachats/an (%)','Current Ratio',
-      'Payout (%)','P/B','PER','P/FCF','Dividende (%)','Description','Site web'];
+    const cols=[
+      'Nom','Ticker','Score /100','Secteur','Industrie','Bourse',
+      'Capitalisation (Mds$)','Cours','Devise','PER','P/B','P/FCF',
+      'Marge nette (%)','ROIC (%)','ROCE (%)',
+      'Hausse CA 5 ans (%)',
+      'Current Ratio','Gearing (%)','Payout (%)',
+      'Dividende (%)','Rachats nets (%/an)',
+      'Description','Site web'
+    ];
     const esc=v=>{ if(v==null||v===undefined) return ''; const s=String(v); return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s; };
-    const n=v=>v!=null&&!Number.isNaN(v)?Number(v).toFixed(2):'';
-    const rows=watch.map(w=>{
+    const n=(v,d=2)=>v!=null&&!Number.isNaN(v)?Number(v).toFixed(d):'';
+    const sgn=(v,d=0)=>v!=null&&!Number.isNaN(v)?((v>=0?'+':'')+Number(v).toFixed(d)):'';
+    const sorted=watch.slice().sort((a,b)=>(b.score||0)-(a.score||0)); // tri par score décroissant
+    const rows=sorted.map(w=>{
       const R=w.R||{};
-      return [w.name,w.sym,sectorLabel(w.sector),w.industry||'',
-        w.mktCap?w.mktCap.toFixed(1):'',w.score||'',w.price||'',w.currency||'USD',
-        n(R.nm),n(R.roic),n(R.roce),
-        R.rev5!=null?R.rev5.toFixed(0):'',n(R.de),
-        R.buyback!=null?R.buyback.toFixed(1):'',n(R.cr),
-        n(R.po),n(R.pb),n(R.pe),n(R.pfcf),n(R.dy),
-        w.desc||'',w.web||''
+      return [
+        w.name,w.sym,w.score||'',sectorLabel(w.sector),w.industry||'',w.exch||'',
+        w.mktCap?w.mktCap.toFixed(1):'',w.price?Number(w.price).toFixed(2):'',w.currency||'USD',n(R.pe,1),n(R.pb,2),n(R.pfcf,1),
+        n(R.nm,1),n(R.roic,1),n(R.roce,1),
+        sgn(R.rev5,0),
+        n(R.cr,2),n(R.de,0),n(R.po,0),
+        n(R.dy,2),sgn(R.buyback,1),
+        (w.desc&&w.desc.length>40)?w.desc:buildDescription(w),w.web||''
       ].map(esc).join(',');
     });
     const csv='﻿'+[cols.join(','),...rows].join('\r\n');
