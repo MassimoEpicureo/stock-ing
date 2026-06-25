@@ -1,0 +1,27 @@
+name: Stock-Ing — Screening quotidien
+
+on:
+  schedule:
+    - cron: '0 7 * * *'      # tous les jours à 07:00 UTC (08h/09h en France)
+  workflow_dispatch:          # bouton "Run workflow" pour tester à la demande
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Lancer le screening
+        env:
+          FINNHUB_KEY:  ${{ secrets.FINNHUB_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python screener.py
