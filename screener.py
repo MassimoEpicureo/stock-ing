@@ -48,15 +48,16 @@ NOM_PROP           = "Nom"                        # titre de la base entreprises
 # D'après la capture, les colonnes sont tronquées ("CA...", "Net mar...", "P/Boo...").
 # Adapte chaque valeur ci-dessous au nom complet réel de la propriété dans Notion.
 CHECKBOX_PROPS = {
-    "CA":            "CA · 5 ans ≥ 25%",   # <-- mets ici le nom complet réel de la propriété
-    "NET_MARGIN":    "Net margin ≥ 10%",   # <-- idem
-    "PBOOK":         "P/Book < 5",         # <-- idem
-    "ROE":           "ROE ≥ 12%",          # <-- idem
-    "ROCE":          "ROCE ≥ 12%",         # <-- idem
-    "GEARING":       "Gearing ≤ 100%",     # <-- idem
-    "CURRENT_RATIO": "Current Ratio ≥ 1",  # <-- idem
-    "PAYOUT":        "Payout Ratio ≤ 80%", # <-- idem
-    "DIVIDENDE":     "Dividende",          # <-- idem
+    "CA":            "CA sur 5 ans < 25%",  # noms relevés directement dans la base Notion
+    "NET_MARGIN":    "Net margin >10%",
+    "PBOOK":         "P/Book < 5",
+    "ROE":           "ROE > 12",
+    "ROCE":          "ROCE >12",
+    "GEARING":       "Gearing < 100%",
+    "CURRENT_RATIO": "Current Ratio > 1",
+    "PAYOUT":        "Payout Ratio < 70%",
+    "DIVIDENDE":     "Dividende",
+    "RACHAT":        "Rachat d'Actions",    # case présente dans Notion, mappée sur buyback
 }
 # NB : la colonne "PER < 20" de la capture est la propriété TITRE (texte), pas une
 # checkbox : elle reçoit déjà la valeur du PER via creer_ligne_watchlist().
@@ -81,9 +82,9 @@ COCHE = dict(
     pe_max=20.0,     # PER < 20 (libellé Notion)
     roe=12.0,        # ROE >= 12%
     roce=12.0,       # ROCE >= 12%
-    gearing_max=100.0,  # Gearing <= 100%
-    cr=1.0,          # Current Ratio >= 1
-    payout_max=80.0, # Payout <= 80%
+    gearing_max=100.0,  # Gearing < 100%
+    cr=1.0,          # Current Ratio > 1
+    payout_max=70.0, # Payout < 70% (aligné sur le libellé Notion)
 )
 
 # Univers analysé chaque jour : grandes capitalisations US de qualité (liste seed du site).
@@ -222,7 +223,7 @@ def enrich(sym):
                 country=p.get("country") or "", cap=cap, pe=pe, score=score, fscore=f,
                 # --- ajouts pour le cochage ---
                 rev5=rev5, nm=nm, pb=pb, roe=roe, roce=roce,
-                gearing=gearing, cr=cr, po=po, has_div=has_div)
+                gearing=gearing, cr=cr, po=po, has_div=has_div, buyback=buyback)
 
 # ====================== NOTION ======================
 
@@ -264,6 +265,7 @@ def _calc_checkboxes(e):
         "CURRENT_RATIO": ge(e["cr"],   COCHE["cr"]),
         "PAYOUT":        le(e["po"],   COCHE["payout_max"]),
         "DIVIDENDE":     bool(e["has_div"]),
+        "RACHAT":        (e["buyback"] is not None and e["buyback"] > 0),
     }
 
 def creer_ligne_watchlist(entreprise_id, e):
