@@ -382,7 +382,13 @@ def main():
 
         if e["score"] >= SEUIL_SCORE and e["fscore"] >= SEUIL_FSCORE:
             if deja_present(e["name"]):
-                print(f"        ↳ déjà dans Notion, ignorée."); continue
+                # NOUVEAU : même déjà connue de Notion, on tente le rattrapage Drive
+                # (utile si la 1ère tentative avait échoué faute de secret/libs à l'époque).
+                # creer_fichier_quanti_drive() vérifie déjà l'existence du fichier, donc
+                # aucun risque de doublon si le fichier a bien été créé la fois précédente.
+                print(f"        ↳ déjà dans Notion — vérification du fichier Drive…")
+                creer_fichier_quanti_drive(e["name"], e["sym"])
+                continue
             ent_id = creer_entreprise(e["name"])
             if ent_id:
                 # MODIFIÉ : on passe tout le dict 'e' (pour le cochage des cases)
