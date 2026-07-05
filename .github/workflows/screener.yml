@@ -21,7 +21,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Lancer le screening
-        env:
+        env: GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           FINNHUB_KEY:  ${{ secrets.FINNHUB_KEY }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: python screener.py
