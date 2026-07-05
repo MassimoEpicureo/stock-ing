@@ -17,7 +17,10 @@ Le pipeline central (Apps Script) prend ensuite le relais pour le reste.
 
 Secrets attendus (variables d'environnement) :
   FINNHUB_KEY, NOTION_TOKEN
-  GOOGLE_SERVICE_ACCOUNT_JSON   (NOUVEAU — contenu JSON du service account, en clair)
+  GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN
+      (MODIFIÉ — remplace GOOGLE_SERVICE_ACCOUNT_JSON. Un service account n'a pas
+      de quota de stockage sur un Drive personnel (erreur storageQuotaExceeded),
+      donc on agit désormais directement au nom de Massimo via OAuth.)
 """
 
 import os, time, sys, json, requests
@@ -26,7 +29,11 @@ import os, time, sys, json, requests
 
 FINNHUB_KEY  = os.environ.get("FINNHUB_KEY", "").strip()
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "").strip()
-GOOGLE_SA_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()  # NOUVEAU
+
+# MODIFIÉ : authentification OAuth (au nom de Massimo) au lieu d'un service account
+GOOGLE_OAUTH_CLIENT_ID     = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "").strip()
+GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "").strip()
+GOOGLE_OAUTH_REFRESH_TOKEN = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN", "").strip()
 
 FH = "https://finnhub.io/api/v1"
 NOTION = "https://api.notion.com/v1"
@@ -301,27 +308,32 @@ def creer_ligne_watchlist(entreprise_id, e):
 
 _drive = [None]
 def _drive_service():
-    """Construit (une seule fois) le client Drive via le service account.
-    Retourne None si la lib ou le secret manquent (le screening continue alors)."""
+    """Construit (une seule fois) le client Drive via OAuth (au nom de Massimo).
+    Retourne None si les identifiants ou les libs manquent (le screening continue)."""
     if _drive[0] is not None:
         return _drive[0]
-    if not GOOGLE_SA_JSON:
-        print("  ! GOOGLE_SERVICE_ACCOUNT_JSON manquant : duplication Drive désactivée.")
+    if not (GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET and GOOGLE_OAUTH_REFRESH_TOKEN):
+        print("  ! Identifiants OAuth Google manquants : duplication Drive désactivée.")
         return None
     try:
-        from google.oauth2 import service_account
+        from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
     except ImportError:
         print("  ! Libs Google absentes (google-api-python-client / google-auth).")
         return None
     try:
-        info = json.loads(GOOGLE_SA_JSON)
-        creds = service_account.Credentials.from_service_account_info(
-            info, scopes=["https://www.googleapis.com/auth/drive"])
+        creds = Credentials(
+            token=None,
+            refresh_token=GOOGLE_OAUTH_REFRESH_TOKEN,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=GOOGLE_OAUTH_CLIENT_ID,
+            client_secret=GOOGLE_OAUTH_CLIENT_SECRET,
+            scopes=["https://www.googleapis.com/auth/drive"],
+        )
         _drive[0] = build("drive", "v3", credentials=creds, cache_discovery=False)
         return _drive[0]
     except Exception as ex:
-        print(f"  ! Init Drive échouée : {ex}")
+        print(f"  ! Init Drive (OAuth) échouée : {ex}")
         return None
 
 def fichier_quanti_existe(nom):
