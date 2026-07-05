@@ -1,1 +1,3 @@
-requests>=2.31
+requests
+google-api-python-client
+google-auth
