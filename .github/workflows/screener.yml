@@ -22,7 +22,9 @@ jobs:
 
       - name: Lancer le screening
         env:
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          FINNHUB_KEY:  ${{ secrets.FINNHUB_KEY }}
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+  GOOGLE_OAUTH_CLIENT_ID:     ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+  GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+  GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+  FINNHUB_KEY:  ${{ secrets.FINNHUB_KEY }}
+  NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: python screener.py
