@@ -100,14 +100,18 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 .sw{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0}
 .sw+.sw{border-top:1px solid var(--rule-2)}
 .sw label{font-size:14px;color:var(--ink-2);cursor:pointer}
-.tg{position:relative;width:34px;height:19px;flex:none}
+.tg{position:relative;width:34px;height:19px;flex:none;cursor:pointer;display:inline-block}
 .tg input{opacity:0;width:0;height:0;position:absolute}
 .tg i{position:absolute;inset:0;background:var(--rule);border-radius:10px;cursor:pointer;transition:background .2s;display:block}
 .tg i::before{content:'';position:absolute;width:15px;height:15px;left:2px;top:2px;background:var(--card);border-radius:50%;transition:transform .2s}
 .tg input:checked + i{background:var(--accent)}
 .tg input:checked + i::before{transform:translateX(15px)}
+.tg input:focus-visible + i{outline:2px solid var(--accent);outline-offset:2px}
+.tg i:hover{background:color-mix(in oklch,var(--rule) 70%,var(--accent))}
+.tg input:checked + i:hover{background:var(--accent-2)}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
 .duo .cell{border:1px solid var(--rule);background:var(--card);padding:10px 11px;display:flex;flex-direction:column;gap:9px}
+.duo .cell:hover{border-color:var(--accent)}
 .duo .cell b{font-size:13.5px;font-weight:400;line-height:1.25;display:block}
 .duo .cell small{font-family:var(--mono);font-size:10px;color:var(--ink-3);display:block;margin-top:2px}
 .chips{display:flex;flex-wrap:wrap;gap:5px}
@@ -378,10 +382,10 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
       <button class="sec-hd" onclick="togSection('retour')"><em id="ch-retour">▸</em><b>Retour actionnaire &amp; données</b><i id="sum-retour"></i></button>
       <div class="sec-bd" id="bd-retour">
         <div class="duo">
-          <div class="cell"><div><b>Dividende</b><small>versé</small></div><span class="tg"><input type="checkbox" id="t-div" onchange="refreshSummary()"><i></i></span></div>
-          <div class="cell"><div><b>Rachats</b><small>d'actions</small></div><span class="tg"><input type="checkbox" id="t-buy" onchange="refreshSummary()"><i></i></span></div>
+          <div class="cell"><div><b>Dividende</b><small>versé</small></div><label class="tg"><input type="checkbox" id="t-div" onchange="onFilterToggle()"><i></i></label></div>
+          <div class="cell"><div><b>Rachats</b><small>d'actions</small></div><label class="tg"><input type="checkbox" id="t-buy" onchange="onFilterToggle()"><i></i></label></div>
         </div>
-        <div class="sw" style="margin-top:12px"><label for="t-fresh">Exercice 2025 ou plus récent</label><span class="tg"><input type="checkbox" id="t-fresh" checked onchange="refreshSummary()"><i></i></span></div>
+        <div class="sw" style="margin-top:12px"><label for="t-fresh">Exercice 2025 ou plus récent</label><label class="tg"><input type="checkbox" id="t-fresh" checked onchange="onFilterToggle()"><i></i></label></div>
       </div>
 
       <button class="sec-hd" onclick="togSection('sect')"><em id="ch-sect">▸</em><b>Secteurs</b><i id="sum-sect"></i></button>
@@ -389,7 +393,7 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
 
       <button class="sec-hd" onclick="togSection('veille')"><em id="ch-veille">▸</em><b>Veille automatique</b><i id="sum-veille"></i></button>
       <div class="sec-bd" id="bd-veille">
-        <div class="sw" style="padding-top:0"><label for="t-auto">Analyser en continu</label><span class="tg"><input type="checkbox" id="t-auto" onchange="toggleAuto()"><i></i></span></div>
+        <div class="sw" style="padding-top:0"><label for="t-auto">Analyser en continu</label><label class="tg"><input type="checkbox" id="t-auto" onchange="toggleAuto()"><i></i></label></div>
         <div class="fl" style="margin-top:14px"><span>Débit réservé</span><b id="v-auto">30 appels/min</b></div>
         <input type="range" min="5" max="45" step="5" value="30" id="autoBudget" oninput="setAutoBudget(this.value)">
         <p class="note">Une passe par minute : 70 % du budget en découverte, 30 % en rafraîchissement des sociétés les plus anciennes. Tourne tant que cet onglet reste ouvert.</p>
@@ -732,12 +736,19 @@ function setStatus(state){
   else { dot.className='status-dot'; txt.textContent='Clé Finnhub invalide'; }
 }
 
-function setF(k,v,u,d,dec=0){ F[k]=parseFloat(v); document.getElementById('v-'+k).textContent=(dec?parseFloat(v).toFixed(1):v)+u; refreshSummary(); }
-function setCap(v){ F.mc=parseInt(v); document.getElementById('v-mc').textContent=v+' Mds'; refreshSummary(); }
-function setRev(v){ F.rev5=parseInt(v); document.getElementById('v-rev5').textContent=(v>=0?'+':'')+v+' %'; refreshSummary(); }
-function setFcf(v){ F.fcf=parseInt(v); document.getElementById('v-fcf').textContent=(v>=0?'+':'')+v+' %'; refreshSummary(); }
+let refilterTimer=null;
+/* Rejoue les filtres sur la mémoire, sans réseau, peu après la dernière manipulation. */
+function scheduleRefilter(){
+  clearTimeout(refilterTimer);
+  refilterTimer=setTimeout(()=>{ if(MEM.size && !scan.running) silentRefilter(); },350);
+}
+function onFilterToggle(){ refreshSummary(); scheduleRefilter(); }
+function setF(k,v,u,d,dec=0){ F[k]=parseFloat(v); document.getElementById('v-'+k).textContent=(dec?parseFloat(v).toFixed(1):v)+u; refreshSummary(); scheduleRefilter(); }
+function setCap(v){ F.mc=parseInt(v); document.getElementById('v-mc').textContent=v+' Mds'; refreshSummary(); scheduleRefilter(); }
+function setRev(v){ F.rev5=parseInt(v); document.getElementById('v-rev5').textContent=(v>=0?'+':'')+v+' %'; refreshSummary(); scheduleRefilter(); }
+function setFcf(v){ F.fcf=parseInt(v); document.getElementById('v-fcf').textContent=(v>=0?'+':'')+v+' %'; refreshSummary(); scheduleRefilter(); }
 function renderChips(){ document.getElementById('chips').innerHTML=SECTORS.map((x,i)=>`<button class="chip ${x.off?'off':'on'}" onclick="togSec(${i})">${x.n}</button>`).join(''); }
-function togSec(i){ SECTORS[i].off=!SECTORS[i].off; renderChips(); refreshSummary(); }
+function togSec(i){ SECTORS[i].off=!SECTORS[i].off; renderChips(); refreshSummary(); scheduleRefilter(); }
 function switchTab(t,btn){
   document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.hnav button').forEach(b=>b.classList.remove('on'));
@@ -830,16 +841,21 @@ function autoLoad(){
   document.getElementById('autoBudget').value=AUTO.budget;
   document.getElementById('v-auto').textContent=AUTO.budget+' appels/min';
 }
-function setAutoBudget(v){ AUTO.budget=parseInt(v)||30; document.getElementById('v-auto').textContent=AUTO.budget+' appels/min'; autoSave(); }
+function setAutoBudget(v){ AUTO.budget=parseInt(v)||30; document.getElementById('v-auto').textContent=AUTO.budget+' appels/min'; autoSave(); refreshSummary(); }
 function toggleAuto(){
   AUTO.on=document.getElementById('t-auto').checked; autoSave();
   if(AUTO.on){
-    if(!fhKey()){ toast('Entrez votre clé Finnhub avant d\'activer la veille.'); AUTO.on=false; document.getElementById('t-auto').checked=false; autoSave(); renderAuto(); return; }
+    if(!fhKey()){
+      toast("Ajoutez votre clé Finnhub dans « Accès aux données » pour activer la veille : elle a besoin d'appeler l'API chaque minute.");
+      AUTO.on=false; document.getElementById('t-auto').checked=false; autoSave(); renderAuto(); refreshSummary();
+      togSection('data'); document.getElementById('fhKey').focus();
+      return;
+    }
     AUTO.next=Date.now()+2000;
     if(!AUTO.loop) AUTO.loop=setInterval(autoTick,1000);
     toast('Veille activée — première passe dans quelques secondes.','ok');
-  } else { clearInterval(AUTO.loop); AUTO.loop=null; }
-  renderAuto();
+  } else { clearInterval(AUTO.loop); AUTO.loop=null; toast('Veille arrêtée.','ok'); }
+  renderAuto(); refreshSummary();
 }
 function renderAuto(){
   const dot=document.getElementById('autoDot'), t=document.getElementById('autoTitle'), sub=document.getElementById('autoSub');
