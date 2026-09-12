@@ -182,7 +182,7 @@ h2{font-size:19px;font-weight:400}
 /* ── TABLEAU DE RÉSULTATS ── */
 .tbl{background:var(--card);border:1px solid var(--rule);overflow-x:auto}
 .tbl-in{min-width:1060px}
-.gr{display:grid;grid-template-columns:44px minmax(230px,1.4fr) 68px 68px 68px 72px 176px 92px 86px 30px;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--rule-2)}
+.gr{display:grid;grid-template-columns:44px minmax(200px,1.3fr) 60px 62px 60px 70px 74px 132px 86px 80px 28px;align-items:center;gap:9px;padding:7px 14px;border-bottom:1px solid var(--rule-2)}
 .gr.head{padding:8px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
 .gr.body{cursor:pointer}
 .gr.body:hover{background:var(--accent-soft)}
@@ -198,8 +198,18 @@ h2{font-size:19px;font-weight:400}
 .nm small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bb{flex:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;padding:2px 5px;border:1px solid var(--accent);color:var(--accent);border-radius:2px;white-space:nowrap}
 .bb.dil{border-color:var(--neg);color:var(--neg)}
-.dots{display:flex;gap:3.5px}
-.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.score13{display:flex;align-items:center;gap:9px}
+.bar13{display:flex;flex:1;min-width:66px;height:9px;border:1px solid var(--rule);overflow:hidden;background:var(--rule-2)}
+.bar13 i{flex:1;display:block;border-right:1px solid var(--card)}
+.bar13 i:last-child{border-right:0}
+.bar13 i.p{background:var(--pass)}
+.bar13 i.w{background:var(--warn)}
+.bar13 i.f{background:transparent}
+.bar13 i.n{background:var(--rule-2)}
+.cnt13{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);flex:none;white-space:nowrap}
+.cnt13 b{font-weight:600;color:var(--ink)}
+.qcard .score13{margin-bottom:11px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
 .dot.p{background:var(--pass);border:1px solid var(--pass)}
 .dot.w{background:var(--warn);border:1px solid var(--warn)}
 .dot.f{background:transparent;border:1px solid var(--ink-3)}
@@ -274,7 +284,8 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
 .desc{font-size:16px;line-height:1.65;color:var(--ink-2);max-width:74ch}
 .desc p{margin-bottom:11px}
 .desc p:last-child{margin-bottom:0}
-.dsrc{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:12px}
+.dsrc{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:12px;line-height:1.7}
+.callout{display:block;font-family:var(--serif);font-size:13.5px;line-height:1.55;color:var(--ink-2);background:var(--accent-soft);border-left:2px solid var(--accent);padding:9px 12px;margin-bottom:8px}
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .tags span{font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:3px 7px;border:1px solid var(--rule);color:var(--ink-2)}
 .chs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:26px}
@@ -318,8 +329,8 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
   <div class="brand"><i></i><span>Stock<em>-</em>Ing</span></div>
   <nav class="hnav">
     <button class="on" id="nav-screener" onclick="switchTab('screener',this)">Screener</button>
-    <button id="nav-portfolio" onclick="switchTab('portfolio',this)">Portefeuille</button>
     <button id="nav-watchlist" onclick="switchTab('watchlist',this)">Watchlist</button>
+    <button id="nav-portfolio" onclick="switchTab('portfolio',this)">Portefeuille</button>
   </nav>
   <div class="hsearch">
     <input id="searchInput" placeholder="Rechercher un nom ou un ticker" autocomplete="off" oninput="onSearch()" onfocus="onSearch()">
@@ -385,6 +396,9 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
           <div class="cell"><div><b>Dividende</b><small>versé</small></div><label class="tg"><input type="checkbox" id="t-div" onchange="onFilterToggle()"><i></i></label></div>
           <div class="cell"><div><b>Rachats</b><small>d'actions</small></div><label class="tg"><input type="checkbox" id="t-buy" onchange="onFilterToggle()"><i></i></label></div>
         </div>
+        <div class="fl" style="margin-top:14px"><span>Rachats min. par an</span><b id="v-bb">+1 %</b></div>
+        <input type="range" min="-5" max="15" step="0.5" value="1" oninput="setBb(this.value)">
+        <p class="note">Seuil commun à l'interrupteur ci-dessus et à la pastille « rachats ». Une valeur négative accepte une légère dilution.</p>
         <div class="sw" style="margin-top:12px"><label for="t-fresh">Exercice 2025 ou plus récent</label><label class="tg"><input type="checkbox" id="t-fresh" checked onchange="onFilterToggle()"><i></i></label></div>
       </div>
 
@@ -479,9 +493,9 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
 
       <div id="results"></div>
       <div class="legend" id="legend" style="display:none">
-        <em><span class="dot p"></span>réussi</em><em><span class="dot w"></span>limite</em>
-        <em><span class="dot f"></span>échoué</em><em><span class="dot n"></span>non disponible</em>
-        <span class="ord">ordre des pastilles : Δ CA · Δ FCF · marge · ROIC · ROCE · rachats · current · payout · P/B · PER · P/FCF · dividende · capitalisation</span>
+        <em><span class="dot p"></span>critère rempli</em><em><span class="dot w"></span>à la limite</em>
+        <em><span class="dot f"></span>échoué</em><em><span class="dot n"></span>donnée absente</em>
+        <span class="ord">la barre regroupe les 13 critères, remplis d'abord ; survolez-la pour lire le détail</span>
       </div>
     </section>
 
@@ -564,9 +578,10 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
         <div class="ch"><b>Cours · 5 ans</b><i id="n-price">&nbsp;</i><div class="chw"><canvas id="c-price"></canvas></div></div>
         <div class="ch"><b>Free cash-flow par action</b><i id="n-fcf">&nbsp;</i><div class="chw"><canvas id="c-fcf"></canvas></div></div>
         <div class="ch"><b>Chiffre d'affaires par action</b><i id="n-sps">&nbsp;</i><div class="chw"><canvas id="c-sps"></canvas></div></div>
-        <div class="ch"><b>Marge nette</b><i id="n-margin">&nbsp;</i><div class="chw"><canvas id="c-margin"></canvas></div></div>
-        <div class="ch"><b>Actions en circulation</b><i id="n-shares">&nbsp;</i><div class="chw"><canvas id="c-shares"></canvas></div></div>
+        <div class="ch"><b>Marge brute et marge nette</b><i id="n-margin">&nbsp;</i><div class="chw"><canvas id="c-margin"></canvas></div></div>
         <div class="ch"><b>Bénéfice par action</b><i id="n-eps">&nbsp;</i><div class="chw"><canvas id="c-eps"></canvas></div></div>
+        <div class="ch"><b>ROIC et ROE</b><i id="n-roic">&nbsp;</i><div class="chw"><canvas id="c-roic"></canvas></div></div>
+        <div class="ch"><b>Dette sur capitaux propres</b><i id="n-de">&nbsp;</i><div class="chw"><canvas id="c-de"></canvas></div></div>
       </div>
       <h4>Solidité Piotroski</h4>
       <div class="pio"><div class="n" id="f-num">—<small>F-SCORE / 9</small></div><div class="d" id="f-dots"></div><p id="f-interp"></p></div>
@@ -623,7 +638,7 @@ function sectorLabel(k){ const m=SECTORS.find(s=>s.k===k); return m?m.n:'Autre';
 let results=[], watch=[], pf=[], charts={}, pfChart=null, simChart=null;
 let sortMode='score', universe=null, candleBlocked=false, lastTotal=0;
 let MEM=new Map();                 // sym -> enregistrement fondamental
-const F={rev5:0,fcf:0,nm:10,roic:10,roce:10,cr:1,po:70,pb:10,pe:30,pfcf:30,mc:10};
+const F={rev5:0,fcf:0,nm:10,roic:10,roce:10,cr:1,po:70,pb:10,pe:30,pfcf:30,mc:10,bb:1};
 let searchTimer=null, simState=null;
 const PLAN={perMin:60};
 const scan={running:false,paused:false,stop:false,done:0,total:0,calls:0,startedAt:0,cMetric:0,cProfile:0,cSec:0,saved:0,batch:0,batches:0};
@@ -747,6 +762,7 @@ function setF(k,v,u,d,dec=0){ F[k]=parseFloat(v); document.getElementById('v-'+k
 function setCap(v){ F.mc=parseInt(v); document.getElementById('v-mc').textContent=v+' Mds'; refreshSummary(); scheduleRefilter(); }
 function setRev(v){ F.rev5=parseInt(v); document.getElementById('v-rev5').textContent=(v>=0?'+':'')+v+' %'; refreshSummary(); scheduleRefilter(); }
 function setFcf(v){ F.fcf=parseInt(v); document.getElementById('v-fcf').textContent=(v>=0?'+':'')+v+' %'; refreshSummary(); scheduleRefilter(); }
+function setBb(v){ F.bb=parseFloat(v); document.getElementById('v-bb').textContent=(v>=0?'+':'')+parseFloat(v).toFixed(v%1?1:0)+' %'; refreshSummary(); scheduleRefilter(); }
 function renderChips(){ document.getElementById('chips').innerHTML=SECTORS.map((x,i)=>`<button class="chip ${x.off?'off':'on'}" onclick="togSec(${i})">${x.n}</button>`).join(''); }
 function togSec(i){ SECTORS[i].off=!SECTORS[i].off; renderChips(); refreshSummary(); scheduleRefilter(); }
 function switchTab(t,btn){
@@ -773,7 +789,7 @@ function refreshSummary(){
   set('solid',`CR ${F.cr.toFixed(1)} · payout ${F.po}%`);
   const d=document.getElementById('t-div'), b=document.getElementById('t-buy'), f=document.getElementById('t-fresh');
   const flags=[d&&d.checked?'div':'',b&&b.checked?'rachats':'',f&&f.checked?'2025+':''].filter(Boolean);
-  set('retour',flags.length?flags.join(' · '):'libre');
+  set('retour',(flags.length?flags.join(' · ')+' · ':'')+`rachats ≥ ${F.bb>=0?'+':''}${F.bb} %`);
   set('sect',on+'/'+SECTORS.length);
   set('veille',AUTO.on?AUTO.budget+'/min':'inactive');
   set('data',fhKey()?(relayTpl()?'Finnhub + SEC':'Finnhub'):'clé requise');
@@ -790,6 +806,7 @@ function resetFilters(){
   document.getElementById('v-pb').textContent='10.0'; document.getElementById('v-pfcf').textContent='30';
   document.getElementById('v-mc').textContent='10 Mds'; document.getElementById('v-cr').textContent='1.0';
   document.getElementById('v-po').textContent='70 %';
+  F.bb=1; document.getElementById('v-bb').textContent='+1 %';
   ['t-div','t-buy'].forEach(id=>document.getElementById(id).checked=false);
   document.getElementById('t-fresh').checked=true;
   SECTORS.forEach((x,i)=>x.off=(i>=8)); renderChips(); refreshSummary();
@@ -1227,6 +1244,10 @@ async function fetchMetrics(sym,name){
   const nmS=serSorted(SER,['netMargin']);
   const epsS=serSorted(SER,['eps']);
   const fcfMarg=serSorted(SER,['fcfMargin']);
+  const gmS=serSorted(SER,['grossMargin']);
+  const roicS=serSorted(SER,['roic','roicTTM']);
+  const roeS=serSorted(SER,['roe','roeTTM']);
+  const deS=serSorted(SER,['totalDebtToEquity','totalDebt/totalEquity','longtermDebtTotalEquity']);
 
   /* FCF par action = marge de FCF × CA par action.
      Finnhub ne publie pas la série de FCF/action, mais publie les deux composantes. */
@@ -1252,7 +1273,7 @@ async function fetchMetrics(sym,name){
   return { sym, name:name||sym, ts:Date.now(), hasProfile:false,
     mktCap:cap, price:0, change:0, logo:'', desc:'', descFr:'', descSrc:'', currency:'USD',
     sector:'other', industry:'', exch:'US', web:'', bbYears, fcfYears, perf,
-    series:{ sps, netMargin:nmS, eps:epsS, fcfPS },
+    series:{ sps, netMargin:nmS, eps:epsS, fcfPS, grossMargin:gmS, roic:roicS, roe:roeS, de:deS }, sv:2,
     R:{ nm, cr, po, pb, pe, pfcf:pfcfR, dy, de, roic, roce, rg, rev5, rev5n, buyback, fcfGrowth } };
 }
 
@@ -1280,7 +1301,7 @@ function passesNumeric(r){
   if(F.mc>0 && (r.mktCap==null || r.mktCap<F.mc)) return false;
   const R=r.R;
   if(document.getElementById('t-div').checked && !((R.dy>0)||(R.po>0))) return false;
-  if(document.getElementById('t-buy').checked && !(bbOf(r)>0)) return false;
+  if(document.getElementById('t-buy').checked && !(bbOf(r)!=null && bbOf(r)>=F.bb)) return false;
   if(document.getElementById('t-fresh').checked){ const fy=lastFY(r); if(fy!=null && fy<2025) return false; }
   return true;
 }
@@ -1306,7 +1327,7 @@ function computeScore(r){
   chk('Marge',R.nm,F.nm,'g','%');
   chk('ROIC',R.roic,F.roic,'g','%');
   chk('ROCE',R.roce,F.roce,'g','%');
-  chk('Rachats',bbOf(r),0,'g','%');
+  chk('Rachats',bbOf(r),F.bb,'g','%');
   chk('C.Ratio',R.cr,F.cr,'g');
   chk('Payout',R.po,F.po,'l','%');
   chk('P/B',R.pb,F.pb,'l');
@@ -1349,7 +1370,7 @@ function renderResults(list){
   area.innerHTML = VIEW==='cards'
     ? `<div class="cardgrid">${list.map(cardHTML).join('')}</div>`
     : `<div class="tbl"><div class="tbl-in">
-        <div class="gr head"><span>Note</span><span>Entreprise</span><span class="ta-r">PER</span><span class="ta-r">Marge</span><span class="ta-r">ROIC</span><span class="ta-r">Δ FCF</span><span>13 critères</span><span class="ta-r">Capi.</span><span class="ta-r">Cours</span><span></span></div>
+        <div class="gr head"><span>Note</span><span>Entreprise</span><span class="ta-r">PER</span><span class="ta-r">Marge</span><span class="ta-r">ROIC</span><span class="ta-r">Δ FCF</span><span class="ta-r">Rachats</span><span>Critères</span><span class="ta-r">Capi.</span><span class="ta-r">Cours</span><span></span></div>
         ${list.map(rowHTML).join('')}</div></div>`;
 }
 function logoHTML(s){ return s.logo?`<img src="${esc(s.logo)}" alt="" onerror="this.parentElement.textContent='${esc(s.sym.slice(0,2))}'">`:esc(s.sym.slice(0,2)); }
@@ -1360,32 +1381,49 @@ function ringHTML(score,size,fs){
     <circle cx="18" cy="18" r="15.6" fill="none" stroke="${col}" stroke-width="2.6" stroke-linecap="round" pathLength="100" stroke-dasharray="${score} ${100-score}" transform="rotate(-90 18 18)"></circle></svg>
     <span style="font-size:${fs}px">${score}</span></div>`;
 }
-function dotsHTML(C){
-  return '<div class="dots">'+Object.keys(C).map(k=>{
-    const c=C[k]; const cl=c.val==null?'n':c.ok?'p':c.warn?'w':'f';
-    return `<span class="dot ${cl}" title="${k}"></span>`; }).join('')+'</div>';
+/* Les 13 critères en une seule barre : segments remplis d'abord, décompte à droite.
+   Le détail nominatif reste accessible au survol et dans la fiche. */
+function critBar(C){
+  const keys=Object.keys(C);
+  const rank={p:0,w:1,f:2,n:3};
+  const st=k=>{ const c=C[k]; return c.val==null?'n':c.ok?'p':c.warn?'w':'f'; };
+  const ok=keys.filter(k=>st(k)==='p').length;
+  const sorted=keys.slice().sort((a,b)=>rank[st(a)]-rank[st(b)]);
+  const manques=keys.filter(k=>st(k)==='f'), limites=keys.filter(k=>st(k)==='w'), absents=keys.filter(k=>st(k)==='n');
+  const tip=[`${ok} critères sur ${keys.length} remplis`,
+    limites.length?'À la limite : '+limites.join(', '):'',
+    manques.length?'Échoués : '+manques.join(', '):'',
+    absents.length?'Sans donnée : '+absents.join(', '):''].filter(Boolean).join(' — ');
+  const col=ok>=10?'var(--pass)':ok>=7?'var(--warn)':'var(--neg)';
+  return `<div class="score13" title="${esc(tip)}">
+    <div class="bar13">${sorted.map(k=>`<i class="${st(k)}"></i>`).join('')}</div>
+    <span class="cnt13"><b style="color:${col}">${ok}</b>/${keys.length}</span></div>`;
 }
 function pct(v,d=1){ return v==null?'—':v.toFixed(d)+'%'; }
 function sgn(v,d=1){ return v==null?'—':(v>=0?'+':'')+v.toFixed(d)+'%'; }
 function subline(s){ return [s.sym, sectorLabel(s.sector), lastFY(s)?'FY'+lastFY(s):null].filter(Boolean).join(' · '); }
-function bbTag(s){
-  const v=bbOf(s); if(v==null) return '';
-  if(v>=1) return `<span class="bb" title="Rachats ${sgn(v)}/an · ${bbSrc(s)}">RACHAT</span>`;
-  if(v<=-1) return `<span class="bb dil" title="Dilution ${sgn(v)}/an · ${bbSrc(s)}">DILUTION</span>`;
-  return '';
+/* Le chiffre remplace le badge : aucun écart possible entre ce qui est filtré
+   et ce qui est affiché. */
+function bbCell(s){
+  const v=bbOf(s);
+  if(v==null) return '<span class="ta-r num" style="font-size:12.5px;color:var(--ink-3)">—</span>';
+  const col=v>=F.bb?'var(--pass)':v>0?'var(--ink-2)':'var(--neg)';
+  return `<span class="ta-r num" style="font-size:12.5px;color:${col}" title="Rachats nets ${sgn(v)}/an · source ${bbSrc(s)}">${sgn(v)}</span>`;
 }
+function bbTag(s){ const v=bbOf(s); return v==null?'':`<span class="bb${v<0?' dil':''}" title="source ${bbSrc(s)}">${sgn(v)}</span>`; }
 function fcfCol(v){ return v==null?'var(--ink-3)':v>=0?'var(--pass)':'var(--neg)'; }
 function rowHTML(s){
   const inW=watch.some(w=>w.sym===s.sym), g=s.R.fcfGrowth;
   return `<div class="gr body" onclick="openModal('${esc(s.sym)}')">
     ${ringHTML(s.score,34,11.5)}
     <div class="idc"><span class="tick">${logoHTML(s)}</span>
-      <span class="nm"><b>${esc(s.name)}</b><small>${esc(subline(s))}</small></span>${bbTag(s)}</div>
+      <span class="nm"><b>${esc(s.name)}</b><small>${esc(subline(s))}</small></span></div>
     <span class="ta-r num" style="font-size:12.5px">${s.R.pe==null?'—':s.R.pe.toFixed(1)}</span>
     <span class="ta-r num" style="font-size:12.5px">${pct(s.R.nm,0)}</span>
     <span class="ta-r num" style="font-size:12.5px">${pct(s.R.roic,0)}</span>
     <span class="ta-r num" style="font-size:12.5px;color:${fcfCol(g)}">${sgn(g)}</span>
-    ${dotsHTML(s.C)}
+    ${bbCell(s)}
+    ${critBar(s.C)}
     <span class="ta-r num" style="font-size:12px;color:var(--ink-2)">${fcap(s.mktCap)}</span>
     <span class="ta-r num" style="font-size:12px;color:var(--ink-2)">${s.price>0?s.price.toFixed(2):'—'}</span>
     <button class="star ${inW?'on':''}" title="Suivre" onclick="event.stopPropagation();togWatch('${esc(s.sym)}',this)">${inW?'★':'☆'}</button>
@@ -1402,8 +1440,8 @@ function cardHTML(s){
       <div><i>Marge</i><b>${pct(s.R.nm,0)}</b></div>
       <div><i>Δ FCF</i><b style="color:${fcfCol(g)}">${sgn(g)}</b></div>
     </div>
-    ${dotsHTML(s.C)}
-    <div class="ft"><span>${fcap(s.mktCap)}</span>${bbTag(s)}<span>${s.price>0?s.price.toFixed(2):'—'}</span>
+    ${critBar(s.C)}
+    <div class="ft"><span>${fcap(s.mktCap)}</span><span title="Rachats nets par an">${bbOf(s)==null?'—':sgn(bbOf(s))}</span><span>${s.price>0?s.price.toFixed(2):'—'}</span>
       <button class="star ${inW?'on':''}" onclick="event.stopPropagation();togWatch('${esc(s.sym)}',this)">${inW?'★':'☆'}</button></div>
   </div>`;
 }
@@ -1481,25 +1519,40 @@ function paragraphs(t){ return String(t).split(/\n{1,}/).map(x=>x.trim()).filter
 
 async function renderDescription(rec){
   const box=document.getElementById('m-desc'), src=document.getElementById('m-descsrc');
-  const site=rec.web?`<a href="${esc(rec.web.startsWith('http')?rec.web:'https://'+rec.web)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600">Site officiel</a>`:'';
-
-  if(rec.descFr){ box.innerHTML=paragraphs(rec.descFr); src.innerHTML=`Traduit de ${esc(rec.descSrc||'la source')} ${site?'· '+site:''}`; return; }
-  if(rec.desc){ box.innerHTML=paragraphs(rec.desc); src.innerHTML=`Source : ${esc(rec.descSrc||'Finnhub')} ${site?'· '+site:''}`; }
-  else { box.innerHTML=paragraphs(buildDescription(rec)); src.innerHTML=`Synthèse générée à partir des fondamentaux Finnhub ${site?'· '+site:''}`; }
-
+  const site=rec.web?` · <a href="${esc(rec.web.startsWith('http')?rec.web:'https://'+rec.web)}" target="_blank" rel="noopener">site officiel</a>`:'';
   const token=rec.sym;
+  const vivant=()=>document.getElementById('m-ticker').textContent===token;
+
+  const poser=(txt,source,cls)=>{ box.innerHTML=paragraphs(txt); src.innerHTML=source+site; box.className='desc'+(cls?' '+cls:''); };
+
+  if(rec.descFr){ poser(rec.descFr,`Traduit de ${esc(rec.descSrc||'la source')}`); return; }
+  if(rec.desc){ poser(rec.desc,`Source : ${esc(rec.descSrc||'Finnhub')}`); }
+  else {
+    poser(buildDescription(rec),'Synthèse calculée à partir des fondamentaux');
+    if(!fmpKey()){
+      src.innerHTML=`<span class="callout">Ceci est une synthèse chiffrée, pas la description de l'activité. Le texte officiel demande une <a href="https://site.financialmodelingprep.com/register" target="_blank" rel="noopener">clé Financial Modeling Prep</a>, gratuite, à coller dans « Accès aux données ».</span>`+site;
+      return;
+    }
+  }
+
   if(!rec.desc && fmpKey()){
     src.innerHTML='Récupération de la description officielle…';
     const d=await fetchFmpDescription(rec);
-    if(d && document.getElementById('m-ticker').textContent===token){ box.innerHTML=paragraphs(d); src.innerHTML=`Source : ${esc(rec.descSrc)} ${site?'· '+site:''}`; }
-    else if(!d) src.innerHTML=`Synthèse générée à partir des fondamentaux Finnhub ${site?'· '+site:''}`;
+    if(!vivant()) return;
+    if(d) poser(d,`Source : ${esc(rec.descSrc)}`);
+    else { src.innerHTML=`<span class="callout">Description absente de la base FMP pour ce titre, ou quota quotidien atteint. Synthèse chiffrée affichée à la place.</span>`+site; return; }
     await memSet(rec);
   }
-  if(rec.desc && !rec.descFr && clKey()){
+  if(rec.desc && !rec.descFr){
+    if(!clKey()){
+      src.innerHTML=`Source : ${esc(rec.descSrc||'Finnhub')}${site} · <span style="color:var(--ink-3)">ajoutez une clé Anthropic pour la version française</span>`;
+      return;
+    }
     src.innerHTML='Traduction en cours…';
     const fr=await translateFr(rec);
-    if(fr && document.getElementById('m-ticker').textContent===token){ box.innerHTML=paragraphs(fr); }
-    src.innerHTML=fr?`Traduit de ${esc(rec.descSrc||'la source')} ${site?'· '+site:''}`:`Source : ${esc(rec.descSrc||'Finnhub')} ${site?'· '+site:''}`;
+    if(!vivant()) return;
+    if(fr) poser(fr,`Traduit de ${esc(rec.descSrc||'la source')}`);
+    else src.innerHTML=`Source : ${esc(rec.descSrc||'Finnhub')}`+site;
     await memSet(rec);
   }
 }
@@ -1570,6 +1623,12 @@ async function openModal(sym){
     toast('Analyse de '+sym+'…','ok');
     try{ s=await loadCompany(sym); }catch(e){ toast(e.message||'Fiche indisponible.'); return; }
   }
+  if(s.sv!==2 && fhKey()){
+    try{ const fresh2=await fetchMetrics(s.sym,s.name);
+      s.series=fresh2.series; s.sv=2; s.R=Object.assign({},fresh2.R,{buybackReal:s.R.buybackReal}); s.ts=Date.now();
+      MEM.set(s.sym,s); dbPut(s);
+    }catch(e){}
+  }
   computeScore(s);
   if(!s.C) return;
   document.getElementById('m-logo').innerHTML=logoHTML(s);
@@ -1607,9 +1666,9 @@ async function openModal(sym){
     : `Rachats estimés sur ~${s.bbYears||0} ans (CA/action face au CA total)${relayTpl()?' — nombre d\'actions SEC indisponible pour ce titre':' — configurez un relais SEC pour la donnée exacte'}.`;
   document.getElementById('m-prov').innerHTML=`<b>Sources :</b> Finnhub pour les fondamentaux et les cours${fy?`, dernier exercice publié FY${fy}`:''}. ${provRachats} FCF/action reconstruit à partir de la marge de FCF et du CA par action. ROCE approché par le rendement du capital tangible.`;
   document.getElementById('overlay').classList.add('open'); document.body.style.overflow='hidden';
-  ['n-price','n-sps','n-margin','n-eps','n-fcf','n-shares'].forEach(id=>document.getElementById(id).innerHTML='&nbsp;');
+  ['n-price','n-sps','n-margin','n-eps','n-fcf','n-roic','n-de'].forEach(id=>document.getElementById(id).innerHTML='&nbsp;');
   killCharts(); drawSeriesCharts(s); renderDescription(s);
-  if(relayTpl() && !s.sharesSeries){ secShares(s).then(v=>{ if(v!=null && document.getElementById('m-ticker').textContent===sym){ memSet(s); computeScore(s); renderMetrics(s); drawSharesChart(s); } }).catch(()=>{}); }
+  if(relayTpl() && !s.sharesSeries){ secShares(s).then(v=>{ if(v!=null && document.getElementById('m-ticker').textContent===sym){ memSet(s); computeScore(s); renderMetrics(s); drawSeriesCharts(s); } }).catch(()=>{}); }
   if(!(s.price>0)){ try{ const q=await fh(`quote?symbol=${sym}`); s.price=num(q.c); s.change=num(q.dp); memSet(s); }catch(e){} }
   drawPerformance(s);
 }
@@ -1645,60 +1704,128 @@ function barChart(el,data,opts={}){ const c=CA(),n=CN(); return new Chart(el,{ty
 function emptyChart(canvas,msg){ if(canvas&&canvas.parentElement) canvas.parentElement.innerHTML=`<div class="chart-empty">${msg||'Données indisponibles'}</div>`; }
 function cagrNote(data){ if(!data||data.vals.length<2) return ''; const v0=data.vals[0],v1=data.vals[data.vals.length-1],n=data.vals.length-1; const g=cagr(v0,v1,n); if(g==null) return ''; return `Croissance : <b class="${g<0?'neg':''}">${g>=0?'+':''}${g.toFixed(1)}%/an</b> sur ${n} ans`; }
 
+function normPct(a){ if(!a||!a.length) return null; const mx=Math.max(...a.map(x=>Math.abs(x.v))); const f=mx<=2?100:1; return {labels:a.map(x=>String(x.period).slice(0,4)),vals:a.map(x=>x.v*f)}; }
+function multiLine(el,labels,sets,opts={}){
+  return new Chart(el,{type:'line',plugins:[crosshair],
+    data:{labels,datasets:sets.map(d=>({label:d.label,data:d.vals,borderColor:d.color,borderWidth:1.8,tension:.25,fill:false,pointRadius:2.2,pointBackgroundColor:d.color,pointBorderColor:cssv('--card','#fff'),pointBorderWidth:1.2,pointHoverRadius:5,borderDash:d.dash||[]}))},
+    options:baseOpts(Object.assign({plugins:{legend:{display:false},tooltip:baseOpts().plugins.tooltip}},opts))});
+}
+function key2(a,b){ return `<span style="color:${a.c}">■</span> ${a.t} &nbsp; <span style="color:${b.c}">■</span> ${b.t}`; }
 function drawSeriesCharts(s){
+  const warn=cssv('--warn','#b8860b'), acc=CA(), neg=CN();
+
   const fcf=toXY(s.series.fcfPS);
-  if(fcf){ const g=s.R.fcfGrowth; document.getElementById('n-fcf').innerHTML=g!=null?`Croissance : <b class="${g<0?'neg':''}">${g>=0?'+':''}${g.toFixed(1)}%/an</b> sur ${s.fcfYears} ans`:(cagrNote(fcf)||'&nbsp;'); charts.fcf=barChart(document.getElementById('c-fcf'),fcf); }
-  else emptyChart(document.getElementById('c-fcf'),'Marge de FCF non publiée par Finnhub pour cette société');
+  if(fcf){ const g=s.R.fcfGrowth;
+    document.getElementById('n-fcf').innerHTML=g!=null?`Croissance : <b class="${g<0?'neg':''}">${g>=0?'+':''}${g.toFixed(1)} %/an</b> sur ${s.fcfYears} ans`:(cagrNote(fcf)||'&nbsp;');
+    charts.fcf=barChart(document.getElementById('c-fcf'),fcf); }
+  else emptyChart(document.getElementById('c-fcf'),'Marge de FCF non publiée pour cette société');
+
   const sps=toXY(s.series.sps);
-  if(sps){ const v=bbOf(s); const bb=v!=null?` · rachats ${bbSrc(s)==='SEC'?'(SEC)':'estimés'} <b class="${v<0?'neg':''}">${v>=0?'+':''}${v.toFixed(1)}%/an</b>`:''; document.getElementById('n-sps').innerHTML=(cagrNote(sps)||'&nbsp;')+bb; charts.sps=barChart(document.getElementById('c-sps'),sps); }
+  if(sps){ const v=bbOf(s);
+    const bb=v!=null?` · nombre d'actions ${v>=0?'en baisse de':'en hausse de'} <b class="${v<0?'neg':''}">${Math.abs(v).toFixed(1)} %/an</b> (${bbSrc(s)})`:'';
+    document.getElementById('n-sps').innerHTML=(cagrNote(sps)||'&nbsp;')+bb;
+    charts.sps=barChart(document.getElementById('c-sps'),sps); }
   else emptyChart(document.getElementById('c-sps'),'Série indisponible');
-  let nm=toXY(s.series.netMargin);
-  if(nm){ if(Math.max(...nm.vals.map(Math.abs))<=2) nm.vals=nm.vals.map(v=>v*100); charts.margin=lineChart(document.getElementById('c-margin'),nm); }
-  else emptyChart(document.getElementById('c-margin'),'Série indisponible');
+
+  // Marge brute face à marge nette : l'écart révèle le pouvoir de fixation des prix.
+  const gm=normPct(s.series.grossMargin), nm=normPct(s.series.netMargin);
+  const mEl=document.getElementById('c-margin');
+  if(gm||nm){
+    const base=gm||nm;
+    const sets=[]; if(gm) sets.push({label:'Marge brute',vals:gm.vals,color:warn,dash:[4,3]});
+    if(nm) sets.push({label:'Marge nette',vals:nm.vals,color:acc});
+    const last=nm?nm.vals[nm.vals.length-1]:null, lastG=gm?gm.vals[gm.vals.length-1]:null;
+    document.getElementById('n-margin').innerHTML=(gm&&nm)
+      ? key2({c:warn,t:`brute ${lastG.toFixed(0)} %`},{c:acc,t:`nette ${last.toFixed(0)} %`})
+      : (last!=null?`Marge nette ${last.toFixed(1)} %`:'&nbsp;');
+    charts.margin=multiLine(mEl,base.labels,sets);
+  } else emptyChart(mEl,'Série indisponible');
+
   const eps=toXY(s.series.eps);
   if(eps){ document.getElementById('n-eps').innerHTML=cagrNote(eps)||'&nbsp;'; charts.eps=barChart(document.getElementById('c-eps'),eps); }
   else emptyChart(document.getElementById('c-eps'),'Série indisponible');
-  drawSharesChart(s);
+
+  // ROIC et ROE : la durabilité de l'avantage se lit dans la stabilité de ces deux courbes.
+  const ri=normPct(s.series.roic), re=normPct(s.series.roe);
+  const rEl=document.getElementById('c-roic');
+  if(ri||re){
+    const base=ri||re, sets=[];
+    if(ri) sets.push({label:'ROIC',vals:ri.vals,color:acc});
+    if(re) sets.push({label:'ROE',vals:re.vals,color:warn,dash:[4,3]});
+    document.getElementById('n-roic').innerHTML=(ri&&re)
+      ? key2({c:acc,t:`ROIC ${ri.vals[ri.vals.length-1].toFixed(0)} %`},{c:warn,t:`ROE ${re.vals[re.vals.length-1].toFixed(0)} %`})
+      : '&nbsp;';
+    charts.roic=multiLine(rEl,base.labels,sets);
+  } else emptyChart(rEl,'Série indisponible');
+
+  // Dette sur capitaux propres : exprimée en multiple, quelle que soit l'unité source.
+  const deRaw=s.series.de, dEl=document.getElementById('c-de');
+  if(deRaw&&deRaw.length){
+    const mx=Math.max(...deRaw.map(x=>Math.abs(x.v)));
+    const f=mx>20?0.01:1;
+    const d={labels:deRaw.map(x=>String(x.period).slice(0,4)),vals:deRaw.map(x=>x.v*f)};
+    const a=d.vals[0], b=d.vals[d.vals.length-1];
+    const sens=b<a?'en baisse':b>a?'en hausse':'stable';
+    document.getElementById('n-de').innerHTML=`${b.toFixed(2)} × aujourd'hui, ${sens} depuis ${d.labels[0]}`;
+    charts.de=new Chart(dEl,{type:'line',plugins:[crosshair],
+      data:{labels:d.labels,datasets:[{data:d.vals,borderColor:b<=a?acc:neg,borderWidth:1.8,tension:.25,fill:false,pointRadius:2.5,pointBackgroundColor:b<=a?acc:neg,pointBorderColor:cssv('--card','#fff'),pointBorderWidth:1.5,pointHoverRadius:5}]},
+      options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${num(c.raw).toFixed(2)} ×`}}}})});
+  } else emptyChart(dEl,'Série indisponible');
 }
-function drawSharesChart(s){
-  const el=document.getElementById('c-shares'); if(!el) return;
-  try{ if(charts.shares) charts.shares.destroy(); }catch(e){}
-  const d=toXY(s.sharesSeries);
-  if(!d){ emptyChart(el, relayTpl()?'Nombre d\'actions non déposé sous ce format':'Relais SEC non configuré — donnée officielle indisponible'); return; }
-  const bb=s.R.buybackReal;
-  document.getElementById('n-shares').innerHTML=bb!=null
-    ? `${bb>=0?'Rachats nets':'Dilution'} : <b class="${bb<0?'neg':''}">${bb>=0?'−':'+'}${Math.abs(bb).toFixed(1)}% d'actions par an</b> sur ${s.bbYearsSec} ans`
-    : '&nbsp;';
-  charts.shares=new Chart(el,{type:'line',plugins:[crosshair],data:{labels:d.labels,datasets:[{data:d.vals,borderColor:cssv('--warn','#b8860b'),borderWidth:1.8,tension:.2,fill:false,pointRadius:2.5,pointBackgroundColor:cssv('--warn','#b8860b'),pointBorderColor:cssv('--card','#fff'),pointBorderWidth:1.5,pointHoverRadius:5}]},
-    options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${num(c.raw).toFixed(1)} M actions`}}}})});
+
+/* Cours sur 5 ans. L'historique Finnhub est payant ; Stooq publie le même
+   historique en CSV, gratuitement et sans clé. Il transite par le relais déjà
+   en place, dont la liste blanche doit inclure stooq.com. */
+async function relayText(url){
+  const u=secUrl(url); if(!u) throw new Error('relais absent');
+  const r=await fetch(u); if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.text();
+}
+function stooqSymbol(sym){ return sym.toLowerCase().replace(/\./g,'-')+'.us'; }
+async function stooqSeries(sym){
+  const d2=new Date(), d1=new Date(d2.getFullYear()-5,d2.getMonth(),1);
+  const f=d=>d.toISOString().slice(0,10).replace(/-/g,'');
+  const csv=await relayText(`https://stooq.com/q/d/l/?s=${stooqSymbol(sym)}&d1=${f(d1)}&d2=${f(d2)}&i=m`);
+  const lines=String(csv).trim().split(/\r?\n/);
+  if(lines.length<4||!/date/i.test(lines[0])) return null;
+  const head=lines[0].split(','), ci=head.findIndex(h=>/close/i.test(h));
+  if(ci<0) return null;
+  const pts=[];
+  for(let k=1;k<lines.length;k++){ const c=lines[k].split(','); const v=parseFloat(c[ci]); if(c[0]&&v>0) pts.push({d:c[0],v}); }
+  return pts.length>4?pts:null;
 }
 async function drawPerformance(s){
   const el=document.getElementById('c-price'), note=document.getElementById('n-price'), pf2=s.perf||{};
-  if(!candleBlocked){
+  if(relayTpl()){
     try{
-      let series=s.priceSeries;
-      if(!series){
-        const to=Math.floor(Date.now()/1000), from=to-5*365*24*3600;
-        const cd=await fh(`stock/candle?symbol=${s.sym}&resolution=M&from=${from}&to=${to}`);
-        if(cd&&cd.s==='ok'&&Array.isArray(cd.c)&&cd.c.length>1){ series={labels:cd.t.map(t=>String(new Date(t*1000).getFullYear())),vals:cd.c.map(num)}; s.priceSeries=series; memSet(s); }
+      let pts=s.priceSeries;
+      if(!pts||!pts.length||Date.now()-(s.priceTs||0)>7*86400000){
+        pts=await stooqSeries(s.sym);
+        if(pts){ s.priceSeries=pts; s.priceTs=Date.now(); memSet(s); }
       }
-      if(series&&series.vals.length>1){
-        const v0=series.vals[0], v1=series.vals[series.vals.length-1], tot=v0>0?((v1/v0-1)*100):null;
-        note.innerHTML=tot!=null?`Sur ~5 ans : <b class="${tot<0?'neg':''}">${tot>=0?'+':''}${tot.toFixed(0)}%</b>`:'&nbsp;';
-        charts.price=lineChart(el,series,{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${s.currency||'$'} ${num(c.raw).toFixed(2)}`}}}});
+      if(pts&&pts.length>4){
+        const data={labels:pts.map(x=>x.d.slice(0,4)),vals:pts.map(x=>x.v)};
+        const v0=data.vals[0], v1=data.vals[data.vals.length-1];
+        const tot=v0>0?((v1/v0-1)*100):null, n=(pts.length-1)/12, an=(v0>0&&n>0)?cagr(v0,v1,n):null;
+        note.innerHTML=tot!=null
+          ? `Sur ${n.toFixed(1)} ans : <b class="${tot<0?'neg':''}">${tot>=0?'+':''}${tot.toFixed(0)} %</b>${an!=null?` · <b class="${an<0?'neg':''}">${an>=0?'+':''}${an.toFixed(1)} %/an</b>`:''}`
+          : '&nbsp;';
+        charts.price=lineChart(el,data,{plugins:{legend:{display:false},tooltip:{callbacks:{
+          title:c=>pts[c[0].dataIndex].d, label:c=>`${s.currency||'USD'} ${num(c.raw).toFixed(2)}`}}}});
         return;
       }
-    }catch(e){ if(e&&(e.status===403||e.status===401)) candleBlocked=true; }
+    }catch(e){}
   }
+  // Repli sans relais : rendements par période et position dans la fourchette annuelle.
   if(pf2.low52!=null&&pf2.high52!=null&&pf2.high52>pf2.low52){
     const px=s.price>0?s.price:null;
     const pos=px!=null?Math.max(0,Math.min(100,(px-pf2.low52)/(pf2.high52-pf2.low52)*100)):null;
-    note.innerHTML=`<div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3)"><span>52s bas ${pf2.low52.toFixed(0)}</span><span>${px!=null?'cours '+px.toFixed(2):''}</span><span>52s haut ${pf2.high52.toFixed(0)}</span></div><div style="position:relative;height:6px;background:var(--rule-2);border-radius:9999px;margin-top:5px">${pos!=null?`<div style="position:absolute;top:-3px;left:${pos}%;width:12px;height:12px;margin-left:-6px;border-radius:9999px;background:var(--accent);border:2px solid var(--card)"></div>`:''}</div></div>`;
+    note.innerHTML=`<span style="display:flex;justify-content:space-between"><span>52s bas ${pf2.low52.toFixed(0)}</span><span>${px!=null?'cours '+px.toFixed(2):''}</span><span>52s haut ${pf2.high52.toFixed(0)}</span></span><span style="position:relative;display:block;height:4px;background:var(--rule-2);margin-top:5px">${pos!=null?`<span style="position:absolute;top:-3px;left:${pos}%;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--accent);display:block"></span>`:''}</span>`;
   } else note.innerHTML='&nbsp;';
-  const pts=[['5J',pf2.r5d],['3M',pf2.r3m],['6M',pf2.r6m],['1A',pf2.r1y],['YTD',pf2.ytd]].filter(p=>p[1]!=null&&!Number.isNaN(p[1]));
-  if(!pts.length){ emptyChart(el,'Historique du cours : endpoint premium Finnhub requis'); return; }
-  charts.price=new Chart(el,{type:'bar',data:{labels:pts.map(p=>p[0]),datasets:[{data:pts.map(p=>p[1]),backgroundColor:pts.map(p=>p[1]<0?CN():CA()),borderRadius:0,maxBarThickness:26}]},
-    options:baseOpts({interaction:{mode:'nearest',intersect:true},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw>=0?'+':''}${num(c.raw).toFixed(1)}%`}}}})});
+  const bars=[['5J',pf2.r5d],['3M',pf2.r3m],['6M',pf2.r6m],['1A',pf2.r1y],['YTD',pf2.ytd]].filter(x=>x[1]!=null&&!Number.isNaN(x[1]));
+  if(!bars.length){ emptyChart(el,'Courbe du cours : ajoutez stooq.com à la liste blanche de votre relais'); return; }
+  charts.price=new Chart(el,{type:'bar',data:{labels:bars.map(x=>x[0]),datasets:[{data:bars.map(x=>x[1]),backgroundColor:bars.map(x=>x[1]<0?CN():CA()),borderRadius:0,maxBarThickness:26}]},
+    options:baseOpts({interaction:{mode:'nearest',intersect:true},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw>=0?'+':''}${num(c.raw).toFixed(1)} %`}}}})});
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1776,7 +1903,8 @@ function renderPf(){
       const v=lineValue(x), c=lineCost(x), g=v-c, gp=c>0?((v/c-1)*100):0, w=t.val>0?v/t.val*100:0;
       const col=g>=0?'var(--pass)':'var(--neg)';
       return `<div class="pgr" onclick="openModal('${esc(x.sym)}')" style="cursor:pointer">
-        <span class="nm"><b>${esc((x.name||x.sym).slice(0,26))}</b><small>${esc(x.sym)} · ${esc(x.type||'Action')}</small></span>
+        <span class="idc"><span class="tick" style="width:30px;height:30px" title="${esc(x.name||x.sym)}">${logoHTML(x)}</span>
+          <span class="nm"><b class="mono" style="font-size:13.5px">${esc(x.sym)}</b><small>${esc(x.type||'Action')}</small></span></span>
         <span class="ta-r num" style="font-size:12.5px">${x.qty.toLocaleString('fr-FR',{maximumFractionDigits:4})}</span>
         <span class="ta-r num" style="font-size:12.5px;color:var(--ink-2)">${x.pru.toFixed(2)}</span>
         <span class="ta-r num" style="font-size:12.5px;color:var(--ink-2)">${x.price>0?x.price.toFixed(2):'—'}</span>
