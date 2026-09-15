@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="fr" data-theme="light">
 <head>
 <meta charset="UTF-8">
@@ -353,40 +354,40 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
       <button class="sec-hd" onclick="togSection('rent')"><em id="ch-rent">▾</em><b>Rentabilité</b><i id="sum-rent"></i></button>
       <div class="sec-bd open" id="bd-rent">
         <div class="fl"><span>Marge nette min.</span><b id="v-nm">10 %</b></div>
-        <input type="range" min="0" max="50" value="10" oninput="setF('nm',this.value,' %','')">
+        <input type="range" min="0" max="50" value="10" id="sliderNm" oninput="setF('nm',this.value,' %','')">
         <div class="fl"><span>ROIC min.</span><b id="v-roic">10 %</b></div>
-        <input type="range" min="0" max="50" value="10" oninput="setF('roic',this.value,' %','')">
+        <input type="range" min="0" max="50" value="10" id="sliderRoic" oninput="setF('roic',this.value,' %','')">
         <div class="fl"><span>ROCE min.</span><b id="v-roce">10 %</b></div>
-        <input type="range" min="0" max="50" value="10" oninput="setF('roce',this.value,' %','')">
+        <input type="range" min="0" max="50" value="10" id="sliderRoce" oninput="setF('roce',this.value,' %','')">
       </div>
 
       <button class="sec-hd" onclick="togSection('croiss')"><em id="ch-croiss">▸</em><b>Croissance</b><i id="sum-croiss"></i></button>
       <div class="sec-bd" id="bd-croiss">
         <div class="fl"><span>Hausse du CA sur 5 ans min.</span><b id="v-rev5">+0 %</b></div>
-        <input type="range" min="-100" max="200" step="5" value="0" oninput="setRev(this.value)">
+        <input type="range" min="-100" max="200" step="5" value="0" id="sliderRev5" oninput="setRev(this.value)">
         <div class="fl"><span>Croissance du FCF par an min.</span><b id="v-fcf">+0 %</b></div>
-        <input type="range" min="-30" max="40" step="1" value="0" oninput="setFcf(this.value)">
+        <input type="range" min="-30" max="40" step="1" value="0" id="sliderFcf" oninput="setFcf(this.value)">
         <p class="note">Le FCF par action est reconstruit à partir de <code>fcfMargin</code> × <code>salesPerShare</code>, puis annualisé sur cinq exercices.</p>
       </div>
 
       <button class="sec-hd" onclick="togSection('valo')"><em id="ch-valo">▸</em><b>Valorisation &amp; taille</b><i id="sum-valo"></i></button>
       <div class="sec-bd" id="bd-valo">
         <div class="fl"><span>PER max.</span><b id="v-pe">30</b></div>
-        <input type="range" min="0" max="80" value="30" oninput="setF('pe',this.value,'','')">
+        <input type="range" min="0" max="80" value="30" id="sliderPe" oninput="setF('pe',this.value,'','')">
         <div class="fl"><span>P/B max.</span><b id="v-pb">10.0</b></div>
-        <input type="range" min="0" max="30" step="0.5" value="10" oninput="setF('pb',this.value,'','',1)">
+        <input type="range" min="0" max="30" step="0.5" value="10" id="sliderPb" oninput="setF('pb',this.value,'','',1)">
         <div class="fl"><span>P/FCF max.</span><b id="v-pfcf">30</b></div>
-        <input type="range" min="0" max="80" value="30" oninput="setF('pfcf',this.value,'','')">
+        <input type="range" min="0" max="80" value="30" id="sliderPfcf" oninput="setF('pfcf',this.value,'','')">
         <div class="fl"><span>Capitalisation min.</span><b id="v-mc">10 Mds</b></div>
-        <input type="range" min="0" max="500" value="10" oninput="setCap(this.value)">
+        <input type="range" min="0" max="500" value="10" id="sliderMc" oninput="setCap(this.value)">
       </div>
 
       <button class="sec-hd" onclick="togSection('solid')"><em id="ch-solid">▸</em><b>Solidité</b><i id="sum-solid"></i></button>
       <div class="sec-bd" id="bd-solid">
         <div class="fl"><span>Current ratio min.</span><b id="v-cr">1.0</b></div>
-        <input type="range" min="0" max="5" step="0.1" value="1" oninput="setF('cr',this.value,'','',1)">
+        <input type="range" min="0" max="5" step="0.1" value="1" id="sliderCr" oninput="setF('cr',this.value,'','',1)">
         <div class="fl"><span>Payout max.</span><b id="v-po">70 %</b></div>
-        <input type="range" min="0" max="100" value="70" oninput="setF('po',this.value,' %','')">
+        <input type="range" min="0" max="100" value="70" id="sliderPo" oninput="setF('po',this.value,' %','')">
       </div>
 
       <button class="sec-hd" onclick="togSection('retour')"><em id="ch-retour">▸</em><b>Retour actionnaire &amp; données</b><i id="sum-retour"></i></button>
@@ -396,7 +397,7 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
           <div class="cell"><div><b>Rachats</b><small>d'actions</small></div><label class="tg"><input type="checkbox" id="t-buy" onchange="onFilterToggle()"><i></i></label></div>
         </div>
         <div class="fl" style="margin-top:14px"><span>Rachats min. par an</span><b id="v-bb">+1 %</b></div>
-        <input type="range" min="-5" max="15" step="0.5" value="1" oninput="setBb(this.value)">
+        <input type="range" min="-5" max="15" step="0.5" value="1" id="sliderBb" oninput="setBb(this.value)">
         <p class="note">Seuil commun à l'interrupteur ci-dessus et à la pastille « rachats ». Une valeur négative accepte une légère dilution.</p>
         <div class="sw" style="margin-top:12px"><label for="t-fresh">Exercice 2025 ou plus récent</label><label class="tg"><input type="checkbox" id="t-fresh" checked onchange="onFilterToggle()"><i></i></label></div>
       </div>
@@ -753,10 +754,11 @@ function setStatus(state){
 let refilterTimer=null;
 /* Rejoue les filtres sur la mémoire, sans réseau, peu après la dernière manipulation. */
 function scheduleRefilter(){
+  saveFilterState();
   clearTimeout(refilterTimer);
   refilterTimer=setTimeout(()=>{ if(MEM.size && !scan.running) silentRefilter(); },350);
 }
-function onFilterToggle(){ refreshSummary(); scheduleRefilter(); }
+function onFilterToggle(){ refreshSummary(); scheduleRefilter(); }  // scheduleRefilter sauvegarde déjà l'état
 function setF(k,v,u,d,dec=0){ F[k]=parseFloat(v); document.getElementById('v-'+k).textContent=(dec?parseFloat(v).toFixed(1):v)+u; refreshSummary(); scheduleRefilter(); }
 function setCap(v){ F.mc=parseInt(v); document.getElementById('v-mc').textContent=v+' Mds'; refreshSummary(); scheduleRefilter(); }
 function setRev(v){ F.rev5=parseInt(v); document.getElementById('v-rev5').textContent=(v>=0?'+':'')+v+' %'; refreshSummary(); scheduleRefilter(); }
@@ -778,6 +780,44 @@ function togSection(k){
   OPEN[k]=!OPEN[k];
   document.getElementById('bd-'+k).classList.toggle('open',OPEN[k]);
   document.getElementById('ch-'+k).textContent=OPEN[k]?'▾':'▸';
+  saveFilterState();
+}
+/* Un seul objet, une seule clé localStorage : tout ce qui définit "ce que
+   je cherche" tient dans le panneau de gauche et doit survivre à la fermeture
+   de l'onglet, au même titre que le portefeuille ou la watchlist. */
+function saveFilterState(){
+  const st={F, sectors:SECTORS.map(x=>x.off), sortMode, view:VIEW, open:OPEN,
+    div:!!document.getElementById('t-div').checked, buy:!!document.getElementById('t-buy').checked, fresh:!!document.getElementById('t-fresh').checked};
+  localStorage.setItem('el-filters',JSON.stringify(st));
+}
+function loadFilterState(){
+  let st=null; try{ st=JSON.parse(localStorage.getItem('el-filters')||'null'); }catch(e){}
+  if(!st) return;
+  if(st.F) Object.assign(F,st.F);
+  if(Array.isArray(st.sectors)) st.sectors.forEach((off,i)=>{ if(SECTORS[i]) SECTORS[i].off=off; });
+  if(st.sortMode) sortMode=st.sortMode;
+  if(st.view) VIEW=st.view;
+  if(st.open) Object.assign(OPEN,st.open);
+  document.getElementById('t-div').checked=!!st.div;
+  document.getElementById('t-buy').checked=!!st.buy;
+  document.getElementById('t-fresh').checked=st.fresh!==false;
+  // Reporte chaque valeur sur son curseur et son étiquette, sans redéclencher de sauvegarde.
+  const set=(id,val)=>{ const el=document.getElementById(id); if(el) el.value=val; };
+  set('sliderNm',F.nm); set('sliderRoic',F.roic); set('sliderRoce',F.roce);
+  set('sliderRev5',F.rev5); set('sliderFcf',F.fcf); set('sliderBb',F.bb);
+  set('sliderPe',F.pe); set('sliderPb',F.pb); set('sliderPfcf',F.pfcf); set('sliderMc',F.mc);
+  set('sliderCr',F.cr); set('sliderPo',F.po);
+  document.getElementById('v-nm').textContent=F.nm+' %'; document.getElementById('v-roic').textContent=F.roic+' %';
+  document.getElementById('v-roce').textContent=F.roce+' %'; document.getElementById('v-rev5').textContent=(F.rev5>=0?'+':'')+F.rev5+' %';
+  document.getElementById('v-fcf').textContent=(F.fcf>=0?'+':'')+F.fcf+' %'; document.getElementById('v-bb').textContent=(F.bb>=0?'+':'')+F.bb.toFixed(F.bb%1?1:0)+' %';
+  document.getElementById('v-pe').textContent=F.pe; document.getElementById('v-pb').textContent=F.pb.toFixed(1);
+  document.getElementById('v-pfcf').textContent=F.pfcf; document.getElementById('v-mc').textContent=F.mc+' Mds';
+  document.getElementById('v-cr').textContent=F.cr.toFixed(1); document.getElementById('v-po').textContent=F.po+' %';
+  renderChips();
+  Object.keys(OPEN).forEach(k=>{ const bd=document.getElementById('bd-'+k), ch=document.getElementById('ch-'+k); if(bd){ bd.classList.toggle('open',OPEN[k]); ch.textContent=OPEN[k]?'▾':'▸'; } });
+  const sel=document.getElementById('sortSel'); if(sel) sel.value=sortMode;
+  document.getElementById('vw-rows').classList.toggle('on',VIEW==='rows');
+  document.getElementById('vw-cards').classList.toggle('on',VIEW==='cards');
 }
 function refreshSummary(){
   const on=SECTORS.filter(x=>!x.off).length;
@@ -808,14 +848,14 @@ function resetFilters(){
   F.bb=1; document.getElementById('v-bb').textContent='+1 %';
   ['t-div','t-buy'].forEach(id=>document.getElementById(id).checked=false);
   document.getElementById('t-fresh').checked=true;
-  SECTORS.forEach((x,i)=>x.off=(i>=8)); renderChips(); refreshSummary();
+  SECTORS.forEach((x,i)=>x.off=(i>=8)); renderChips(); refreshSummary(); saveFilterState();
   if(MEM.size) silentRefilter();
 }
-let VIEW=localStorage.getItem('el-view')||'rows';
-function setView(v){ VIEW=v; localStorage.setItem('el-view',v);
+let VIEW='rows';
+function setView(v){ VIEW=v;
   document.getElementById('vw-rows').classList.toggle('on',v==='rows');
   document.getElementById('vw-cards').classList.toggle('on',v==='cards');
-  applySort(); }
+  applySort(); saveFilterState(); }
 
 /* ── HELPERS ── */
 function num(v){ const n=parseFloat(v); return Number.isNaN(n)?0:n; }
@@ -849,7 +889,7 @@ async function fh(path){
    anciennes en mémoire. Toute nouvelle entreprise qui franchit vos
    filtres déclenche une notification.
    ══════════════════════════════════════════════════════════════ */
-const AUTO={on:false,budget:30,next:0,added:0,updated:0,qual:0,running:false,loop:null,ordered:null,msg:''};
+const AUTO={on:false,budget:30,next:0,added:0,updated:0,qual:0,running:false,loop:null,ordered:null,orderedFull:false,msg:''};
 function autoSave(){ localStorage.setItem('el-auto',JSON.stringify({on:AUTO.on,budget:AUTO.budget})); }
 function autoLoad(){
   try{ const c=JSON.parse(localStorage.getItem('el-auto')||'null'); if(c){ AUTO.on=!!c.on; AUTO.budget=c.budget||30; } }catch(e){}
@@ -899,10 +939,12 @@ async function autoPass(){
   if(!fhKey()) return;
   AUTO.running=true; renderAuto();
   try{
-    if(!AUTO.ordered){
-      let o=SEEDS.map(x=>({sym:x,name:x}));
-      try{ const uni=await fetchUniverse(); const seed=new Set(SEEDS); o=o.concat(uni.filter(u=>!seed.has(u.sym))); }catch(e){}
-      AUTO.ordered=o;
+    if(!AUTO.orderedFull){
+      await tryExpandUniverse();
+      const seed=new Set(SEEDS), o=SEEDS.map(x=>({sym:x,name:x}));
+      if(universe) o.push(...universe.filter(u=>!seed.has(u.sym)));
+      AUTO.ordered=o; AUTO.orderedFull=!!universe;
+      if(!AUTO.orderedFull) AUTO.msg=`Univers étendu indisponible (${uniLastErr||'cause inconnue'}) — limité aux ${SEEDS.length} valeurs de référence`;
     }
     const B=Math.max(4,AUTO.budget), now=Date.now();
     const neufs=[];
@@ -1043,6 +1085,20 @@ function lastFY(r){ const a=r&&r.series&&r.series.sps; return (a&&a.length)?pars
 /* ══════════════════════════════════════════════════════════════
    UNIVERS — 1 seul appel pour ~25 000 tickers US
    ══════════════════════════════════════════════════════════════ */
+let uniLastTry=0, uniLastErr=null;
+/* Auparavant, un échec de fetchUniverse était mis en cache pour toute la
+   session : la veille et l'analyse retombaient alors, pour de bon, sur les
+   442 valeurs de référence sans jamais réessayer. Cette fonction retente
+   l'appel — au plus une fois toutes les 10 minutes — jusqu'à ce qu'il
+   réussisse, et conserve le message d'erreur réel pour qu'il soit visible
+   quelque part plutôt que silencieusement avalé. */
+async function tryExpandUniverse(){
+  if(universe) return true;
+  if(Date.now()-uniLastTry<10*60000) return false;
+  uniLastTry=Date.now();
+  try{ await fetchUniverse(); uniLastErr=null; return true; }
+  catch(e){ uniLastErr=(e&&e.message)||'erreur inconnue'; return false; }
+}
 async function fetchUniverse(){
   if(universe) return universe;
   const d=await fh('stock/symbol?exchange=US');
@@ -1091,11 +1147,15 @@ async function run(limit){
 
   try{
     let ordered=SEEDS.map(s=>({sym:s,name:s}));
-    try{
-      const uni=await fetchUniverse();
+    const uniOk=await tryExpandUniverse();
+    if(uniOk){
       const seed=new Set(SEEDS);
-      ordered=ordered.concat(uni.filter(u=>!seed.has(u.sym)));
-    }catch(e){ toast("Univers étendu indisponible — analyse des grandes valeurs seules."); }
+      ordered=ordered.concat(universe.filter(u=>!seed.has(u.sym)));
+      logLine(`Univers étendu : <b>${universe.length.toLocaleString('fr-FR')}</b> tickers ajoutés aux ${SEEDS.length} valeurs de référence`);
+    } else {
+      logLine(`<b style="color:var(--neg)">Univers étendu indisponible</b> — ${esc(uniLastErr||'cause inconnue')}. Analyse limitée aux ${SEEDS.length} valeurs de référence ; nouvelle tentative dans 10 min.`);
+      toast('Univers étendu indisponible : '+(uniLastErr||'cause inconnue')+' — voir le journal pour le détail.');
+    }
 
     // 1) Réutiliser tout ce qui est déjà en mémoire (0 appel)
     const known=[], queue=[];
@@ -1342,7 +1402,7 @@ function computeScore(r){
 function sColor(s){ return s>=70?'var(--pass)':s>=45?'var(--warn)':'var(--neg)'; }
 function buyBadge(b){ if(b==null) return {cls:'env-flat',txt:'n/d'}; if(b>=1) return {cls:'env-buy',txt:'Rachats'}; if(b<=-1) return {cls:'env-dil',txt:'Dilution'}; return {cls:'env-flat',txt:'Stable'}; }
 
-function sortBy(m){ sortMode=m; applySort(); }
+function sortBy(m){ sortMode=m; applySort(); saveFilterState(); }
 function applySort(){
   const arr=results.slice(), g=v=>v==null?-1e9:v;
   if(sortMode==='buy') arr.sort((a,b)=>g(bbOf(b))-g(bbOf(a)));
@@ -2108,15 +2168,14 @@ window.addEventListener('beforeunload',e=>{ if(scan.running){ e.preventDefault()
 /* ── INIT ── */
 async function init(){
   applyTheme(localStorage.getItem('el-theme')||'light');
-  renderChips(); loadKeys(); loadPlan(); renderRate(); watchLoad(); pfLoad();
+  renderChips(); loadKeys(); loadPlan(); renderRate(); watchLoad(); pfLoad(); loadFilterState();
   try{
     await openDB();
     const all=await dbAll();
     all.forEach(r=>MEM.set(r.sym,r));
   }catch(e){ toast('Stockage local indisponible — les analyses ne seront pas conservées entre deux sessions.'); }
   updateStoreInfo(); renderWatch(); renderPf();
-  autoLoad(); renderAuto(); refreshSummary(); setView(VIEW); renderPlanHint();
-  document.getElementById('sortSel').value=sortMode;
+  autoLoad(); renderAuto(); refreshSummary(); renderPlanHint();
   if(AUTO.on && fhKey()){ AUTO.next=Date.now()+5000; AUTO.loop=setInterval(autoTick,1000); }
   if(MEM.size){
     silentRefilter();
