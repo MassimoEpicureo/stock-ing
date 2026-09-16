@@ -49,6 +49,7 @@ a:hover{color:var(--accent-2)}
 .brand i{width:15px;height:15px;background:var(--accent);transform:rotate(45deg);display:block}
 .brand span{font-size:21px;letter-spacing:-.01em;font-weight:500}
 .brand span em{color:var(--ink-3);font-style:normal}
+.brand small{font-family:var(--mono);font-size:10px;color:var(--ink-3);border:1px solid var(--rule);padding:1px 5px;margin-left:8px;white-space:nowrap}
 .hnav{display:flex;gap:2px;flex:none}
 .hnav button{height:30px;padding:0 13px;background:none;border:1px solid transparent;border-radius:3px;font-size:14px;color:var(--ink-3);cursor:pointer}
 .hnav button:hover{color:var(--ink)}
@@ -326,7 +327,7 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
 <body>
 
 <header class="hd">
-  <div class="brand"><i></i><span>Stock<em>-</em>Ing</span></div>
+  <div class="brand"><i></i><span>Stock<em>-</em>Ing</span><small id="verTag" title="Version du fichier actuellement ouvert"></small></div>
   <nav class="hnav">
     <button class="on" id="nav-screener" onclick="switchTab('screener',this)">Screener</button>
     <button id="nav-watchlist" onclick="switchTab('watchlist',this)">Watchlist</button>
@@ -596,6 +597,7 @@ h4{font-size:17px;font-weight:400;margin-bottom:12px;padding-bottom:7px;border-b
 <script>
 const FH='https://finnhub.io/api/v1';
 const FMP='https://financialmodelingprep.com/stable';
+const APP_VERSION='v8 · univers SEC';   // affiché dans l'en-tête et journalisé à chaque analyse
 const TARGET=3000;                 // sociétés visées par analyse complète
 const STALE=7*24*3600*1000;        // fondamentaux considérés frais 7 jours
 const REFRESH_AGE=24*3600*1000;    // au-delà de 24 h, la veille remet la société à jour
@@ -1035,7 +1037,7 @@ async function testRelay(){
   try{
     const m=await secTickerMap();
     SEC.ok=true;
-    el.innerHTML=`<b style="color:var(--pass)">Relais opérationnel</b> — ${m.size.toLocaleString('fr-FR')} sociétés reliées à leur identifiant SEC. Les rachats seront lus dans les dépôts officiels.`;
+    el.innerHTML=`<b style="color:var(--pass)">Relais opérationnel</b> — ${m.size.toLocaleString('fr-FR')} sociétés. Cette liste sert à la fois d'univers au screener (au-delà des ${SEEDS.length} valeurs de référence) et de source aux rachats d'actions.`;
   }catch(e){
     SEC.ok=false;
     el.innerHTML=`<b style="color:var(--neg)">Relais injoignable</b> — ${esc(e.message||'')}. Vérifiez l'URL et la présence de <code>{url}</code>. Sans relais, les rachats restent estimés.`;
@@ -1126,8 +1128,13 @@ async function tryExpandUniverse(){
   if(Date.now()-uniLastTry<10*60000) return false;
   uniLastTry=Date.now();
   if(relayTpl()){
-    try{ universe=await fetchSecUniverse(); uniSource='SEC'; uniLastErr=null; return true; }
+    try{
+      universe=await fetchSecUniverse(); uniSource='SEC'; uniLastErr=null;
+      return true;
+    }
     catch(e){ uniLastErr='SEC : '+((e&&e.message)||'erreur inconnue'); }
+  } else {
+    uniLastErr='aucun relais SEC configuré';
   }
   try{ await fetchUniverse(); uniSource='Finnhub'; uniLastErr=null; return true; }
   catch(e){ uniLastErr=(uniLastErr?uniLastErr+' · ':'')+'Finnhub : '+((e&&e.message)||'erreur inconnue'); return false; }
@@ -1178,7 +1185,7 @@ async function run(limit){
   const area=document.getElementById('results');
   Object.assign(scan,{running:true,stop:false,paused:false,calls:0,cMetric:0,cProfile:0,cSec:0,saved:0,batch:0,startedAt:Date.now()});
   loading(true); scanUI(true); logReset(); setPhase("Constitution de l'univers…"); renderAuto();
-  logLine(`<b>Démarrage</b> · objectif ${cap.toLocaleString('fr-FR')} sociétés · ${PLAN.perMin} appels/min · relais SEC ${relayTpl()?'actif':'inactif'}`);
+  logLine(`<b>Démarrage</b> · Stock-Ing ${APP_VERSION} · objectif ${cap.toLocaleString('fr-FR')} sociétés · ${PLAN.perMin} appels/min · relais SEC ${relayTpl()?'actif':'inactif'}`);
   results=[]; renderResults([]);
 
   try{
@@ -2205,6 +2212,7 @@ window.addEventListener('beforeunload',e=>{ if(scan.running){ e.preventDefault()
 /* ── INIT ── */
 async function init(){
   applyTheme(localStorage.getItem('el-theme')||'light');
+  document.getElementById('verTag').textContent=APP_VERSION;
   renderChips(); loadKeys(); loadPlan(); renderRate(); watchLoad(); pfLoad(); loadFilterState();
   try{
     await openDB();
