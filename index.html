@@ -878,7 +878,11 @@ async function fh(path){
   if(r.status===403){ const e=new Error("Cet endpoint Finnhub n'est pas inclus dans votre plan (403)."); e.status=403; throw e; }
   if(r.status===429){ const e=new Error("Débit Finnhub dépassé (429). Sélectionnez le débit réel de votre plan dans le panneau de gauche."); e.status=429; throw e; }
   if(!r.ok){ const e=new Error('Finnhub HTTP '+r.status); e.status=r.status; throw e; }
-  return r.json();
+  const j=await r.json();
+  if(j && typeof j==='object' && !Array.isArray(j) && typeof j.error==='string'){
+    const e=new Error(j.error+' (accès hors de votre plan Finnhub)'); e.status=200; e.finnhubPlan=true; throw e;
+  }
+  return j;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -940,11 +944,12 @@ async function autoPass(){
   AUTO.running=true; renderAuto();
   try{
     if(!AUTO.orderedFull){
-      await tryExpandUniverse();
+      const ok=await tryExpandUniverse();
       const seed=new Set(SEEDS), o=SEEDS.map(x=>({sym:x,name:x}));
       if(universe) o.push(...universe.filter(u=>!seed.has(u.sym)));
-      AUTO.ordered=o; AUTO.orderedFull=!!universe;
+      AUTO.ordered=o; AUTO.orderedFull=ok&&!!universe;
       if(!AUTO.orderedFull) AUTO.msg=`Univers étendu indisponible (${uniLastErr||'cause inconnue'}) — limité aux ${SEEDS.length} valeurs de référence`;
+      else AUTO.msg=`Univers étendu (${uniSource}) chargé — ${universe.length.toLocaleString('fr-FR')} sociétés disponibles`;
     }
     const B=Math.max(4,AUTO.budget), now=Date.now();
     const neufs=[];
@@ -954,7 +959,7 @@ async function autoPass(){
     const partNeufs=neufs.length?Math.ceil(B*0.7):0;
     const lot=neufs.slice(0,partNeufs).map(u=>({sym:u.sym,name:u.name,neuf:true}))
       .concat(vieux.slice(0,B-partNeufs).map(r=>({sym:r.sym,name:r.name,neuf:false})));
-    if(!lot.length){ AUTO.msg='Univers exploré et à jour'; return; }
+    if(!lot.length){ AUTO.msg=AUTO.orderedFull?'Univers exploré et à jour':`Limité aux ${SEEDS.length} valeurs de référence — univers étendu indisponible (${uniLastErr||'cause inconnue'})`; return; }
 
     const avant=new Set(results.map(x=>x.sym));
     const recs=await pool(lot,4,async it=>{
@@ -1036,16 +1041,39 @@ async function testRelay(){
     el.innerHTML=`<b style="color:var(--neg)">Relais injoignable</b> — ${esc(e.message||'')}. Vérifiez l'URL et la présence de <code>{url}</code>. Sans relais, les rachats restent estimés.`;
   }
 }
+/* Un seul téléchargement (mis en cache 30 jours) alimente deux usages :
+   la correspondance ticker → CIK pour les rachats, et la liste complète
+   des sociétés pour élargir l'univers du screener — sans dépendre de
+   l'endpoint Finnhub qui s'est révélé restreint sur le plan gratuit. */
+let secRaw=null;
+async function secCompanyTickers(){
+  if(secRaw) return secRaw;
+  const cached=await metaGet('sec-tickers-v2');
+  if(cached && Date.now()-cached.ts<30*86400000){ secRaw=cached.data; return secRaw; }
+  const j=await secFetch('https://www.sec.gov/files/company_tickers.json');
+  const list=[];
+  Object.values(j||{}).forEach(x=>{
+    if(!x||!x.ticker||!x.cik_str) return;
+    const sym=String(x.ticker).toUpperCase();
+    if(!/^[A-Z0-9.\-]{1,6}$/.test(sym)) return;
+    list.push({sym, cik:String(x.cik_str).padStart(10,'0'), name:x.title||sym});
+  });
+  if(!list.length) throw new Error('réponse vide');
+  secRaw=list; await metaPut('sec-tickers-v2',{ts:Date.now(),data:list});
+  return list;
+}
 async function secTickerMap(){
   if(SEC.tickers) return SEC.tickers;
-  const cached=await metaGet('sec-tickers');
-  if(cached && Date.now()-cached.ts<30*86400000){ SEC.tickers=new Map(cached.data); return SEC.tickers; }
-  const j=await secFetch('https://www.sec.gov/files/company_tickers.json');
-  const m=new Map();
-  Object.values(j||{}).forEach(x=>{ if(x&&x.ticker) m.set(String(x.ticker).toUpperCase(), String(x.cik_str).padStart(10,'0')); });
-  if(!m.size) throw new Error('réponse vide');
-  SEC.tickers=m; await metaPut('sec-tickers',{ts:Date.now(),data:[...m]});
-  return m;
+  const list=await secCompanyTickers();
+  const m=new Map(); list.forEach(x=>m.set(x.sym,x.cik));
+  SEC.tickers=m; return m;
+}
+/* Liste d'univers alternative : indépendante de Finnhub, gratuite, et déjà
+   éprouvée puisque c'est la même source que les rachats d'actions. */
+async function fetchSecUniverse(){
+  const list=await secCompanyTickers();
+  if(list.length<500) throw new Error('liste SEC anormalement courte ('+list.length+')');
+  return list.map(x=>({sym:x.sym,name:x.name}));
 }
 /* Une valeur par année : la déclaration la plus récente de chaque exercice. */
 async function secShares(rec){
@@ -1085,24 +1113,31 @@ function lastFY(r){ const a=r&&r.series&&r.series.sps; return (a&&a.length)?pars
 /* ══════════════════════════════════════════════════════════════
    UNIVERS — 1 seul appel pour ~25 000 tickers US
    ══════════════════════════════════════════════════════════════ */
-let uniLastTry=0, uniLastErr=null;
-/* Auparavant, un échec de fetchUniverse était mis en cache pour toute la
-   session : la veille et l'analyse retombaient alors, pour de bon, sur les
-   442 valeurs de référence sans jamais réessayer. Cette fonction retente
-   l'appel — au plus une fois toutes les 10 minutes — jusqu'à ce qu'il
-   réussisse, et conserve le message d'erreur réel pour qu'il soit visible
-   quelque part plutôt que silencieusement avalé. */
+let uniLastTry=0, uniLastErr=null, uniSource=null;
+/* Deux sources, dans cet ordre : la SEC (si un relais est configuré —
+   gratuite, hors quota Finnhub, et déjà éprouvée par les rachats) puis
+   Finnhub en repli. Un échec n'est plus mis en cache indéfiniment : la
+   fonction retente au plus une fois toutes les 10 minutes, et conserve le
+   motif exact plutôt que de l'avaler silencieusement. Une liste anormalement
+   courte est traitée comme un échec, jamais comme un univers "complet" —
+   c'est précisément ce qui masquait le problème avant cette correction. */
 async function tryExpandUniverse(){
   if(universe) return true;
   if(Date.now()-uniLastTry<10*60000) return false;
   uniLastTry=Date.now();
-  try{ await fetchUniverse(); uniLastErr=null; return true; }
-  catch(e){ uniLastErr=(e&&e.message)||'erreur inconnue'; return false; }
+  if(relayTpl()){
+    try{ universe=await fetchSecUniverse(); uniSource='SEC'; uniLastErr=null; return true; }
+    catch(e){ uniLastErr='SEC : '+((e&&e.message)||'erreur inconnue'); }
+  }
+  try{ await fetchUniverse(); uniSource='Finnhub'; uniLastErr=null; return true; }
+  catch(e){ uniLastErr=(uniLastErr?uniLastErr+' · ':'')+'Finnhub : '+((e&&e.message)||'erreur inconnue'); return false; }
 }
 async function fetchUniverse(){
   if(universe) return universe;
   const d=await fh('stock/symbol?exchange=US');
-  const arr=Array.isArray(d)?d:[], seen=new Set(), list=[];
+  const arr=Array.isArray(d)?d:[];
+  if(!arr.length) throw new Error("réponse vide sur cet endpoint (souvent restreint au plan gratuit)");
+  const seen=new Set(), list=[];
   arr.forEach(x=>{
     const sym=x&&x.symbol; if(!sym||seen.has(sym)) return;
     const t=(x.type||'').toLowerCase();
@@ -1111,6 +1146,7 @@ async function fetchUniverse(){
     if(sym.length>5) return;
     seen.add(sym); list.push({sym,name:x.description||sym});
   });
+  if(list.length<500) throw new Error('liste anormalement courte après filtrage ('+list.length+') — endpoint probablement hors plan');
   universe=list; return list;
 }
 
@@ -1151,9 +1187,10 @@ async function run(limit){
     if(uniOk){
       const seed=new Set(SEEDS);
       ordered=ordered.concat(universe.filter(u=>!seed.has(u.sym)));
-      logLine(`Univers étendu : <b>${universe.length.toLocaleString('fr-FR')}</b> tickers ajoutés aux ${SEEDS.length} valeurs de référence`);
+      logLine(`Univers étendu (source ${esc(uniSource)}) : <b>${universe.length.toLocaleString('fr-FR')}</b> tickers ajoutés aux ${SEEDS.length} valeurs de référence`);
     } else {
-      logLine(`<b style="color:var(--neg)">Univers étendu indisponible</b> — ${esc(uniLastErr||'cause inconnue')}. Analyse limitée aux ${SEEDS.length} valeurs de référence ; nouvelle tentative dans 10 min.`);
+      const suggestion=relayTpl()?'':' Configurez un relais SEC (section « Accès aux données ») pour une source alternative, gratuite et indépendante de Finnhub.';
+      logLine(`<b style="color:var(--neg)">Univers étendu indisponible</b> — ${esc(uniLastErr||'cause inconnue')}. Analyse limitée aux ${SEEDS.length} valeurs de référence ; nouvelle tentative dans 10 min.${esc(suggestion)}`);
       toast('Univers étendu indisponible : '+(uniLastErr||'cause inconnue')+' — voir le journal pour le détail.');
     }
 
