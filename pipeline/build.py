@@ -557,6 +557,15 @@ def main():
     if rows and miss / len(rows) > 0.25:
         errors.append(f"{miss} sociétés ({miss/len(rows):.0%}) ont 3 critères qualité ou plus sans donnée")
 
+    # Métadonnées pour la fiche (logo, création, pays, description) — jamais bloquant
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import metadata
+        store = metadata.enrich(rows, log)
+        json.dump(store, open(os.path.join(OUT, "companies.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    except Exception as e:
+        log(f"  ! Métadonnées indisponibles ({e}) : la fiche restera sans logo ni description")
+
     rows.sort(key=lambda x: (x["quality_fails"] + x["price_fails"], -(x["mcap_bn"] or 0)))
     counts = {L: sum(1 for x in rows if L in x["lists"]) for L in "ABCD"}
     meta = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "n": len(rows),
@@ -571,7 +580,7 @@ def main():
     log(f"Listes : {counts}")
     for t in (os.environ.get("CHECK_TICKERS") or "AAPL,V,DPZ,KO,GOOGL,TTE").split(","):
         x = next((y for y in rows if y["ticker"] == t), None)
-        if x: log(f"  [{t}] FY{x['last_fy']} {json.dumps(x['metrics'], ensure_ascii=False)} listes={x['lists']} flag={x['flag']}")
+        if x: log(f"  [{t}] FY{x['last_fy']} {json.dumps(x['metrics'], ensure_ascii=False)} listes={x['lists']} flag={x['flag']} meta={json.dumps(x.get('meta'), ensure_ascii=False)[:400]}")
         else: log(f"  [{t}] absent")
     if errors:
         open(os.path.join(OUT, "errors.txt"), "w", encoding="utf-8").write("\n".join(errors))
