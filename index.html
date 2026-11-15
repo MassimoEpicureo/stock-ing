@@ -176,7 +176,7 @@ function logoHTML(r,big){
   return `<span class="${c}" data-ini="${ini}"><img ${big?"":"loading=\"lazy\" "}alt="" src="${srcs[0]}" data-alt="${esc(srcs[1]||'')}" onerror="logoFail(this)"></span>`;
 }
 function logoFail(img){ const a=img.dataset.alt; if(a){ img.dataset.alt=''; img.src=a; return; } const sp=img.parentNode; sp.classList.add('ini'); sp.textContent=sp.dataset.ini; }
-function flagHTML(iso){ if(!iso||!/^[A-Za-z]{2}$/.test(iso)) return ''; const c=iso.toLowerCase(); return `<img class="flagi" src="https://flagcdn.com/w40/${c}.png" alt="${esc(iso)}" title="${esc(iso)}">`; }
+function flagHTML(iso){ if(!iso||!/^[A-Za-z]{2}$/.test(iso)) return ''; const c=iso.toLowerCase(); return `<img class="flagi" src="https://flagcdn.com/w40/${c}.png" alt="" title="${esc(iso)}" onerror="this.remove()">`; }
 const FIN=/bank|banks|insurance|savings|finance companies|investment managers|major banks/i;
 
 async function fetchFirst(urls){
@@ -312,7 +312,7 @@ function openMd(t){
     chartHTML('Marge nette', ys, nm, '%', false)].join('');
   const mt=r.meta||{}, iso=mt.country||mt.hq_country;
   const facts=[iso?`${flagHTML(iso)}<b>${esc(iso.toUpperCase())}</b>`:'', mt.founded?`Fondée en <b>${mt.founded}</b>`:'',
-    `${esc(sectFR(r.sector))}${r.industry?' · '+esc(r.industry):''}`, mt.website?`<a href="${esc(mt.website)}" target="_blank" rel="noopener">site officiel ↗</a>`:''].filter(Boolean).join('<span style="color:var(--rule)">|</span>');
+    `${esc(sectFR(r.sector))}${r.industry?' · '+esc(r.industry):''}`, mt.website?`<a href="${esc(mt.website)}" target="_blank" rel="noopener">site officiel ↗</a>`:''].filter(Boolean).map(x=>`<span>${x}</span>`).join('<span style="color:var(--rule)">|</span>');
   const desc=mt.desc?`<p class="desc">${esc(mt.desc.text)} ${mt.desc.url?`<a href="${esc(mt.desc.url)}" target="_blank" rel="noopener">${mt.desc.url.includes('wikidata')?'Wikidata':'Wikipédia'}${mt.desc.lang==='en'?' (en)':''} ↗</a>`:''}</p>`:'<p class="desc" style="color:var(--ink-3)">Description non trouvée.</p>';
   const sec=`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${r.cik}&type=10-K&dateb=&owner=include&count=40`;
   document.getElementById('mdc').innerHTML=`
