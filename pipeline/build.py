@@ -34,6 +34,7 @@ BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
 TODAY = date.today()
+DIAG = set(filter(None, (os.environ.get("DIAG_TICKERS") or "").split(",")))
 LOG = []
 def log(msg):
     print(msg, flush=True); LOG.append(msg)
@@ -167,6 +168,8 @@ CONCEPTS = {
     "debt_total": [("us-gaap", "LongTermDebt"), ("us-gaap", "DebtLongtermAndShorttermCombinedAmount"),
                    ("us-gaap", "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities")],
     "debt_lt": [("us-gaap", "LongTermDebtNoncurrent"), ("us-gaap", "LongTermDebtAndCapitalLeaseObligations"),
+                ("us-gaap", "SecuredLongTermDebt"), ("us-gaap", "LongTermNotesPayable"), ("us-gaap", "SeniorLongTermNotes"),
+                ("us-gaap", "UnsecuredLongTermDebt"), ("us-gaap", "OtherLongTermDebtNoncurrent"),
                 ("ifrs-full", "NoncurrentPortionOfNoncurrentBorrowings"), ("ifrs-full", "NoncurrentBorrowings"),
                 ("ifrs-full", "LongtermBorrowings")],
     "debt_cur": [("us-gaap", "LongTermDebtCurrent"), ("us-gaap", "DebtCurrent"),
@@ -280,7 +283,7 @@ def ratios_for_year(h):
         "roce": pct(op, cap_emp) if (cap_emp and cap_emp > 0) else None,
     }
 
-def compute(f, price):
+def compute(f, price, mcap_px=None):
     H = f["hist"]; ys = sorted(H); L = ys[-1]; h = H[L]
     r = {}
     # --- croissance CA 5 ans (cumulée)
@@ -330,6 +333,13 @@ def compute(f, price):
         if sh and h["equity"] and h["equity"] > 0: r["pb"] = price / (h["equity"] / sh)
         if sh and div: r["div_yield"] = (div / sh) / price * 100
         if sh: r["mcap_calc"] = price * sh
+        # Repli : capitalisation publiée par Nasdaq (sociétés à plusieurs classes d'actions, ex. Visa)
+        if mcap_px:
+            ni, fcf = h["net_income"], h["fcf"]
+            if "pe" not in r and ni and ni > 0: r["pe"] = mcap_px / ni; r["valuation_note"] = "capitalisation Nasdaq"
+            if "p_fcf" not in r and fcf and fcf > 0: r["p_fcf"] = mcap_px / fcf; r["valuation_note"] = "capitalisation Nasdaq"
+            if "div_yield" not in r and div: r["div_yield"] = div / mcap_px * 100
+            if "pb" not in r and h["equity"] and h["equity"] > 0: r["pb"] = mcap_px / h["equity"]
     return r
 
 # ============================================================ 6. CRITÈRES & LISTES
@@ -383,6 +393,21 @@ def download_companyfacts():
 def r2(x, n=2):
     return None if x is None or (isinstance(x, float) and (math.isnan(x) or math.isinf(x))) else round(x, n)
 
+def diagnose(facts, label):
+    """Journal : concepts disponibles (dernière valeur annuelle) utiles pour déboguer une société."""
+    pat = re.compile(r"(Debt|Borrow|Notes|OperatingIncome|ProfitLoss|BeforeTax|FinanceCost|Shares|EarningsPerShare|LiabilitiesCurrent|CurrentLiabilities)", re.I)
+    out = []
+    for tax in ("us-gaap", "ifrs-full", "dei"):
+        for c, node in (facts.get(tax) or {}).items():
+            if not pat.search(c): continue
+            for unit, items in (node.get("units") or {}).items():
+                ann = [i for i in items if i.get("form") in ANNUAL_FORMS]
+                if not ann: continue
+                last = max(ann, key=lambda i: (i.get("end", ""), i.get("filed", "")))
+                if last.get("end", "") >= f"{TODAY.year-2}-01-01":
+                    out.append(f"{tax}:{c} [{unit}] {last.get('end')} = {last.get('val')}")
+    log(f"  DIAG {label} :\n    " + "\n    ".join(sorted(out)[:80]))
+
 def main():
     errors = []
     uni = load_universe()
@@ -407,6 +432,7 @@ def main():
     names = set(z.namelist())
     min_cap = CRIT["universe"]["min_market_cap_bn_usd"] * 1e9
     rows, n_try, n_fund = [], 0, 0
+    n_big, n_big_ok = 0, 0
     for k, u in uni.items():
         p = px.get(k) or {}
         price = p.get("price")
@@ -415,14 +441,18 @@ def main():
         fn = f"CIK{u['cik']:010d}.json"
         if fn not in names: continue
         n_try += 1
+        big = p.get("mcap") is not None and p["mcap"] >= min_cap
+        n_big += big
         try:
             facts = json.loads(z.read(fn)).get("facts") or {}
+            if u["ticker"] in DIAG: diagnose(facts, u["ticker"])
             f = fundamentals(facts)
         except Exception as e:
             f = None
         if not f: continue
         n_fund += 1
-        r = compute(f, price)
+        n_big_ok += big
+        r = compute(f, price, p.get("mcap"))
         mcap = p.get("mcap") or r.get("mcap_calc")
         if mcap is None or mcap < min_cap: continue
         ev = evaluate(r)
@@ -444,8 +474,8 @@ def main():
             "checks": {**ev["quality"]["checks"], **ev["price"]["checks"]},
             "lists": ev["lists"], "flag": flag, "hist": hist,
         })
-    cov_f = n_fund / max(1, n_try)
-    log(f"Fondamentaux lus : {n_fund}/{n_try} ({cov_f:.0%}) · retenues (≥ {CRIT['universe']['min_market_cap_bn_usd']} Md$) : {len(rows)}")
+    cov_f = n_big_ok / max(1, n_big)
+    log(f"Fondamentaux lus : {n_fund}/{n_try} dossiers · couverture des sociétés ≥ seuil (selon Nasdaq) : {n_big_ok}/{n_big} ({cov_f:.0%}) · retenues (≥ {CRIT['universe']['min_market_cap_bn_usd']} Md$) : {len(rows)}")
 
     dq = CRIT["data_quality"]
     if cov_px < dq["min_price_coverage"]: errors.append(f"Couverture des cours trop faible : {cov_px:.0%}")

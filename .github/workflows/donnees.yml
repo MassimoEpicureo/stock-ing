@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: '30 22 * * 1-5'      # du lundi au vendredi, 22h30 UTC (après la clôture US)
   workflow_dispatch:              # bouton « Run workflow » pour lancer à la demande
+    inputs:
+      diag:
+        description: 'Tickers à diagnostiquer (facultatif, séparés par des virgules)'
+        required: false
+        default: ''
   push:
     branches: [refonte-sec]       # tests pendant la refonte (sans effet une fois fusionné dans main)
     paths: ['pipeline/**', 'criteria.json', '.github/workflows/donnees.yml']
@@ -36,6 +41,7 @@ jobs:
       - name: Construire les données
         id: build
         env:
+          DIAG_TICKERS: ${{ github.event.inputs.diag }}
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 'Stock-Ing screener MassimoEpicureo@users.noreply.github.com' }}
         run: python pipeline/build.py
 
