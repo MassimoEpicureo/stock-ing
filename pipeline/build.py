@@ -295,21 +295,16 @@ def fundamentals(facts):
             "equity": v("equity", y), "cash": (v("cash", y) or 0) + (v("st_invest", y) or 0) if v("cash", y) is not None else None,
             "debt": debt,
         }
-    # Divisions d'actions (splits) postérieures au dernier 10-K : le cours est déjà ajusté, pas le BPA.
-    # On compare le nombre d'actions le plus récent (page de garde 10-Q/10-K, toutes classes) au nombre dilué.
-    split = None
+    # Nombre d'actions le plus récent déclaré (page de garde 10-Q/10-K, somme des classes) : sert à
+    # détecter une division d'actions (split) postérieure au dernier 10-K (voir compute()).
+    dei_shares = dei_date = None
     try:
         items = facts["dei"]["EntityCommonStockSharesOutstanding"]["units"]["shares"]
-        last_end = max(i["end"] for i in items)
-        latest = sum({i["val"] for i in items if i["end"] == last_end})
-        sh = hist[last]["shares"]
-        if sh and latest and last_end > hist[last]["end"]:
-            f = latest / sh
-            if f >= 1.8 or f <= 0.55:
-                split = round(f, 2)
+        dei_date = max(i["end"] for i in items)
+        dei_shares = sum({i["val"] for i in items if i["end"] == dei_date})
     except Exception:
         pass
-    return {"currency": currency_of(facts), "last_fy": last, "hist": hist, "split_factor": split}
+    return {"currency": currency_of(facts), "last_fy": last, "hist": hist, "dei_shares": dei_shares, "dei_date": dei_date}
 
 # ============================================================ 5. RATIOS
 def pct(a, b):
@@ -367,13 +362,23 @@ def compute(f, price, mcap_px=None):
     # --- valorisation (par action : neutre vis-à-vis des classes d'actions multiples)
     sh = h["shares"]
     eps0 = h["eps"]
-    if not f.get("split_factor") and sh and mcap_px and price:
-        # Second contrôle : actions implicites selon Nasdaq (capitalisation / cours). Un ratio >= 1,8
-        # signale une division d'actions pas encore visible dans les dépôts SEC (ex. Booking 2026).
-        # (Un ratio < 1 vient en général des classes d'actions multiples : non traité ici.)
-        fx = (mcap_px / price) / sh
-        if fx >= 1.8:
-            f["split_factor"] = round(fx, 2)
+    # Division d'actions (split) postérieure au dernier 10-K : le cours est déjà ajusté, pas le BPA.
+    # Référence : actions implicites Nasdaq (capitalisation / cours). Si la SEC a publié un nombre
+    # d'actions récent (< 120 jours), il doit confirmer à 30 % près. Facteurs plausibles uniquement.
+    f["split_factor"] = None
+    if sh:
+        f_n = (mcap_px / price) / sh if (mcap_px and price) else None
+        f_d = None
+        if f.get("dei_shares") and f.get("dei_date"):
+            age = (TODAY - pdate(f["dei_date"])).days if pdate(f["dei_date"]) else 999
+            if age <= 120 and f["dei_date"] > h["end"]:
+                f_d = f["dei_shares"] / sh
+        def plausible(x): return x is not None and (1.8 <= x <= 60 or 1 / 60 <= x <= 0.55)
+        if plausible(f_n) and (f_d is None or abs(f_d / f_n - 1) <= 0.3):
+            if f_n >= 1.8 or (f_d is not None and f_d <= 0.55):   # split inversé : seulement si la SEC confirme
+                f["split_factor"] = round(f_n, 2)
+        elif f_n is None and plausible(f_d):
+            f["split_factor"] = round(f_d, 2)
     if f.get("split_factor") and sh:
         sh = sh * f["split_factor"]
         eps0 = eps0 / f["split_factor"] if eps0 is not None else None
