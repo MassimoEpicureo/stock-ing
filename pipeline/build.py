@@ -404,6 +404,10 @@ def compute(f, price, mcap_px=None):
             if "p_fcf" not in r and fcf and fcf > 0: r["p_fcf"] = mcap_px / fcf; r["valuation_note"] = "capitalisation Nasdaq"
             if "div_yield" not in r and div: r["div_yield"] = div / mcap_px * 100
             if "pb" not in r and h["equity"] and h["equity"] > 0: r["pb"] = mcap_px / h["equity"]
+        # Garde-fou : valorisations impossibles (devise ou échelle incohérente) -> non calculées
+        if (r.get("pe") is not None and r["pe"] < 1) or (r.get("p_fcf") is not None and r["p_fcf"] < 0.5):
+            for k in ("pe", "p_fcf", "pb", "div_yield"): r.pop(k, None)
+            r["valuation_note"] = "valorisation incohérente (devise ou échelle) : non calculée"
     return r
 
 # ============================================================ 6. CRITÈRES & LISTES
@@ -524,7 +528,9 @@ def main():
         hist = {str(y): {kk: (r2(vv, 0) if isinstance(vv, float) and abs(vv) > 1000 else (r2(vv, 3) if isinstance(vv, float) else vv))
                          for kk, vv in H[y].items()} for y in sorted(H)}
         flag = None
-        if r.get("split_factor"):
+        if r.get("valuation_note", "").startswith("valorisation incohérente"):
+            flag = r["valuation_note"]
+        elif r.get("split_factor"):
             flag = f"division d'actions détectée après le dernier 10-K (facteur {r['split_factor']}) : BPA et actions ajustés"
         elif p.get("mcap") and r.get("mcap_calc"):
             ratio = r["mcap_calc"] / p["mcap"]
