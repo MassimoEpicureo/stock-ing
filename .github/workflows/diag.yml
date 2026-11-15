@@ -1,0 +1,18 @@
+name: diag-temp
+on:
+  push:
+    branches: [refonte-sec]
+    paths: ['.github/workflows/diag.yml']
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for UA in "Stock-Ing screener MassimoEpicureo@users.noreply.github.com" "Massimo Epicureo stockingscreener@gmail.com" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36"; do
+            for U in https://www.sec.gov/files/company_tickers_exchange.json https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip https://data.sec.gov/submissions/CIK0000320193.json; do
+              echo "$(curl -s -o /tmp/o -w '%{http_code}' -r 0-200 -A "$UA" -H 'Accept-Encoding: gzip, deflate' "$U") | $UA | $U"; head -c 300 /tmp/o | tr -d '\n' | cut -c1-200; echo
+            done
+          done
+          echo "--- nasdaq"; curl -s -o /tmp/n -w '%{http_code}\n' -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" -H "Accept: application/json, text/plain, */*" --max-time 60 "https://api.nasdaq.com/api/screener/stocks?tableonly=true&download=true"; head -c 300 /tmp/n; echo
+          echo "--- yahoo"; curl -s -o /tmp/y -w '%{http_code}\n' -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/spark?interval=1d&range=5d&symbols=AAPL,MSFT"; head -c 300 /tmp/y; echo
+          curl -s ifconfig.me; echo
