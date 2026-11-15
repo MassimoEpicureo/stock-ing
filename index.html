@@ -245,6 +245,7 @@ function filtered(){
   }
   const k=sortKey;
   res.sort((a,b)=>{
+    if(q){ const ea=a.r.ticker.toLowerCase()===q, eb=b.r.ticker.toLowerCase()===q; if(ea!==eb) return ea?-1:1; }  // ticker exact en premier
     if(!k) return a.e.fails-b.e.fails || (b.r.mcap_bn||0)-(a.r.mcap_bn||0);
     const va=val(a,k), vb=val(b,k); if(va==null) return 1; if(vb==null) return -1;
     return (va>vb?1:va<vb?-1:0)*sortDir;
