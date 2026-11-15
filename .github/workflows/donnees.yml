@@ -13,7 +13,7 @@ on:
         required: false
         default: ''
   push:
-    branches: [refonte-sec]       # tests pendant la refonte (sans effet une fois fusionné dans main)
+    branches: [refonte-sec, site-enrichi]   # branches de test (sans effet sur main)
     paths: ['pipeline/**', 'criteria.json', '.github/workflows/donnees.yml']
 
 permissions:
@@ -48,7 +48,7 @@ jobs:
       - name: Publier sur la branche « data »
         if: success()
         run: |
-          mkdir -p /tmp/pub && cp out/screen.json out/meta.json criteria.json /tmp/pub/
+          mkdir -p /tmp/pub && cp out/screen.json out/meta.json criteria.json /tmp/pub/ && (cp out/companies.json /tmp/pub/ || true)
           cd /tmp/pub
           git init -q -b data
           git config user.name  "stock-ing-bot"
