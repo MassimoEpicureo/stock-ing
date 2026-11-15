@@ -295,7 +295,21 @@ def fundamentals(facts):
             "equity": v("equity", y), "cash": (v("cash", y) or 0) + (v("st_invest", y) or 0) if v("cash", y) is not None else None,
             "debt": debt,
         }
-    return {"currency": currency_of(facts), "last_fy": last, "hist": hist}
+    # Divisions d'actions (splits) postérieures au dernier 10-K : le cours est déjà ajusté, pas le BPA.
+    # On compare le nombre d'actions le plus récent (page de garde 10-Q/10-K, toutes classes) au nombre dilué.
+    split = None
+    try:
+        items = facts["dei"]["EntityCommonStockSharesOutstanding"]["units"]["shares"]
+        last_end = max(i["end"] for i in items)
+        latest = sum({i["val"] for i in items if i["end"] == last_end})
+        sh = hist[last]["shares"]
+        if sh and latest and last_end > hist[last]["end"]:
+            f = latest / sh
+            if f >= 1.8 or f <= 0.55:
+                split = round(f, 2)
+    except Exception:
+        pass
+    return {"currency": currency_of(facts), "last_fy": last, "hist": hist, "split_factor": split}
 
 # ============================================================ 5. RATIOS
 def pct(a, b):
@@ -352,8 +366,13 @@ def compute(f, price, mcap_px=None):
     r["years_available"] = len(ys)
     # --- valorisation (par action : neutre vis-à-vis des classes d'actions multiples)
     sh = h["shares"]
+    eps0 = h["eps"]
+    if f.get("split_factor") and sh:
+        sh = sh * f["split_factor"]
+        eps0 = eps0 / f["split_factor"] if eps0 is not None else None
+        r["split_factor"] = f["split_factor"]
     if price and f["currency"] == "USD":
-        eps = h["eps"] if h["eps"] is not None else (h["net_income"] / sh if sh else None)
+        eps = eps0 if eps0 is not None else (h["net_income"] / sh if sh else None)
         if eps and eps > 0: r["pe"] = price / eps
         if sh and h["fcf"] and h["fcf"] > 0: r["p_fcf"] = price / (h["fcf"] / sh)
         if sh and h["equity"] and h["equity"] > 0: r["pb"] = price / (h["equity"] / sh)
@@ -486,7 +505,9 @@ def main():
         hist = {str(y): {kk: (r2(vv, 0) if isinstance(vv, float) and abs(vv) > 1000 else (r2(vv, 3) if isinstance(vv, float) else vv))
                          for kk, vv in H[y].items()} for y in sorted(H)}
         flag = None
-        if p.get("mcap") and r.get("mcap_calc"):
+        if r.get("split_factor"):
+            flag = f"division d'actions détectée après le dernier 10-K (facteur {r['split_factor']}) : BPA et actions ajustés"
+        elif p.get("mcap") and r.get("mcap_calc"):
             ratio = r["mcap_calc"] / p["mcap"]
             if ratio > 2 or ratio < 0.5: flag = "capitalisation incohérente (classes d'actions multiples ?) : vérifier PER et P/FCF"
         rows.append({
