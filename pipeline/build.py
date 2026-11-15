@@ -183,7 +183,7 @@ CONCEPTS = {
     "debt_st": [("us-gaap", "ShortTermBorrowings"), ("us-gaap", "CommercialPaper"), ("us-gaap", "OtherShortTermBorrowings")],
     "income_tax": [("us-gaap", "IncomeTaxExpenseBenefit"), ("ifrs-full", "IncomeTaxExpenseContinuingOperations")],
 }
-INSTANT = { "assets_cur", "liab_cur", "equity", "cash", "st_invest", "debt_total", "debt_lt", "debt_cur", "debt_st"}
+INSTANT = {"assets", "assets_cur", "liab_cur", "equity", "cash", "st_invest", "debt_total", "debt_lt", "debt_cur", "debt_st"}
 ANNUAL_FORMS = {"10-K", "10-K/A", "10-KT", "20-F", "20-F/A", "40-F", "40-F/A"}
 
 def fy_of(end):
