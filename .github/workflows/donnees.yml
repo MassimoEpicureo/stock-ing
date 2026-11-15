@@ -24,9 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -36,7 +36,7 @@ jobs:
       - name: Construire les données
         id: build
         env:
-          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 'Stock-Ing screener github.com/MassimoEpicureo/stock-ing' }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 'Stock-Ing screener MassimoEpicureo@users.noreply.github.com' }}
         run: python pipeline/build.py
 
       - name: Publier sur la branche « data »

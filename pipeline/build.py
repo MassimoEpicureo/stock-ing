@@ -29,7 +29,7 @@ CACHE = os.environ.get("SEC_CACHE_DIR", os.path.join(ROOT, ".cache"))
 os.makedirs(OUT, exist_ok=True); os.makedirs(CACHE, exist_ok=True)
 
 # La SEC exige un User-Agent identifiant le demandeur (règle « fair access »).
-SEC_UA = os.environ.get("SEC_USER_AGENT", "Stock-Ing screener github.com/MassimoEpicureo/stock-ing")
+SEC_UA = os.environ.get("SEC_USER_AGENT", "Stock-Ing screener MassimoEpicureo@users.noreply.github.com")
 BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
