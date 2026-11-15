@@ -53,7 +53,7 @@ jobs:
           echo "Publié : $(du -h screen.json | cut -f1)"
 
       - name: Alerte si données incomplètes (issue GitHub → e-mail)
-        if: failure()
+        if: failure() && github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
