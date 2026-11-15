@@ -62,14 +62,19 @@ def load_universe():
     d = get("https://www.sec.gov/files/company_tickers_exchange.json").json()
     f = d["fields"]; rows = [dict(zip(f, r)) for r in d["data"]]
     ex = set(CRIT["universe"]["exchanges"])
-    out = {}
+    out, seen = {}, set()
     for r in rows:
         if r.get("exchange") not in ex: continue
         t = r["ticker"]
         # on écarte warrants / droits / unités / préférentielles (suffixes typiques)
         if re.search(r"-(W|WT|WS|U|UN|R|RT|P[A-Z]?)$", t) or len(norm_ticker(t)) > 6: continue
-        out.setdefault(norm_ticker(t), {"ticker": t, "cik": int(r["cik"]), "name": r["name"], "exchange": r["exchange"]})
-    log(f"Univers SEC NYSE+Nasdaq : {len(out)} tickers")
+        cik = int(r["cik"])
+        # Un seul titre par société : le premier listé par la SEC (action principale).
+        # Écarte les obligations cotées (ex. GOOGM, METAM) et les classes secondaires.
+        if cik in seen: continue
+        seen.add(cik)
+        out.setdefault(norm_ticker(t), {"ticker": t, "cik": cik, "name": r["name"], "exchange": r["exchange"]})
+    log(f"Univers SEC NYSE+Nasdaq : {len(out)} sociétés (un titre par société)")
     return out
 
 # ============================================================ 2. COURS
