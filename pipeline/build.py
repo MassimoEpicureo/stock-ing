@@ -362,6 +362,13 @@ def compute(f, price, mcap_px=None):
     # --- valorisation (par action : neutre vis-à-vis des classes d'actions multiples)
     sh = h["shares"]
     eps0 = h["eps"]
+    # Contrôle d'échelle : nombre d'actions ≈ résultat net / BPA (certaines sociétés déclarent
+    # leurs actions en milliers ou en millions dans le XBRL, ex. McDonald's).
+    if eps0 and eps0 > 0 and h["net_income"] and h["net_income"] > 0:
+        implied = h["net_income"] / eps0
+        if not sh or not (0.67 <= sh / implied <= 1.5):
+            sh = implied
+            r["shares_note"] = "actions recalculées (résultat net / BPA)"
     # Division d'actions (split) postérieure au dernier 10-K : le cours est déjà ajusté, pas le BPA.
     # Référence : actions implicites Nasdaq (capitalisation / cours). Si la SEC a publié un nombre
     # d'actions récent (< 120 jours), il doit confirmer à 30 % près. Facteurs plausibles uniquement.
