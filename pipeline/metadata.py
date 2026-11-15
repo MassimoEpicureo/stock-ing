@@ -8,7 +8,7 @@ Métadonnées des sociétés pour la fiche du site (gratuit, sans clé) :
 Mise en cache 30 jours sur la branche « data » (companies.json) pour ne pas
 solliciter ces services chaque soir. Une panne ici ne bloque jamais le calcul.
 """
-import json, time, urllib.parse
+import json, re, time, urllib.parse
 from datetime import date, timedelta
 import requests
 
@@ -55,9 +55,12 @@ def _sparql(ciks=None, tickers=None):
     else:
         vals = " ".join('"' + t.replace('"', '') + '"' for t in tickers)
         ident = (f'VALUES ?cik {{ {vals} }}\n  ?item p:P414 ?st . ?st ps:P414 ?ex ; pq:P249 ?cik .'
-                 '\n  VALUES ?ex { wd:Q13677 wd:Q82059 }')
+                 '\n  VALUES ?ex { wd:Q13677 wd:Q82059 }'
+                 '\n  FILTER NOT EXISTS { ?st pq:P582 ?fin . }'          # cotation terminée
+                 '\n  FILTER NOT EXISTS { ?item wdt:P576 ?dissous . }'   # société dissoute
+                 '\n  OPTIONAL { ?item rdfs:label ?lab . FILTER(lang(?lab) = "en") }')
     q = f"""
-SELECT ?cik ?item ?inception ?iso ?hqiso ?website ?logo ?frTitle ?enTitle ?descFr ?descEn WHERE {{
+SELECT ?cik ?item ?lab ?inception ?iso ?hqiso ?website ?logo ?frTitle ?enTitle ?descFr ?descEn WHERE {{
   {ident}
   OPTIONAL {{ ?item wdt:P571 ?inception . }}
   OPTIONAL {{ ?item wdt:P17 ?c . ?c wdt:P297 ?iso . }}
@@ -89,7 +92,7 @@ SELECT ?cik ?item ?inception ?iso ?hqiso ?website ?logo ?frTitle ?enTitle ?descF
         if inc and inc[:1] != "-":
             y = int(inc[:4])
             if 1600 <= y <= date.today().year and (m.get("founded") is None or y < m["founded"]): m["founded"] = y
-        for k_src, k_dst in (("iso", "country"), ("hqiso", "hq_country"), ("website", "website"),
+        for k_src, k_dst in (("lab", "label"), ("iso", "country"), ("hqiso", "hq_country"), ("website", "website"),
                              ("frTitle", "wp_fr"), ("enTitle", "wp_en"), ("descFr", "wd_fr"), ("descEn", "wd_en")):
             if g(k_src) and not m.get(k_dst): m[k_dst] = g(k_src)
         if g("logo") and not m.get("logo"):
@@ -120,7 +123,8 @@ def enrich(rows, log):
     cutoff = (today - timedelta(days=REFRESH_DAYS)).isoformat()
     def stale(m):
         # à rafraîchir : jamais vu, plus de 30 jours, ou non trouvé et pas encore cherché par ticker
-        return (m.get("fetched", "") < cutoff) or (not m.get("wikidata") and not m.get("tp"))
+        return ((m.get("fetched", "") < cutoff) or (not m.get("wikidata") and not m.get("tp"))
+                or (m.get("wikidata") and not m.get("via") and not m.get("v2")))   # revalider l'ancien cache
     todo = [x["cik"] for x in rows if stale(prev.get(str(x["cik"])) or {})]
     log(f"Métadonnées : {len(rows) - len(todo)} en cache, {len(todo)} à rafraîchir (Wikidata / Wikipédia)")
     fresh = {}
@@ -134,8 +138,20 @@ def enrich(rows, log):
     found = {}
     for i in range(0, len(tick), 150):
         found.update(_sparql(tickers=tick[i:i + 150])); time.sleep(1)
+    names = {x["cik"]: x["name"] for x in rows}
+    def same_company(sec_name, m):
+        """Le premier mot significatif du nom SEC doit figurer dans le libellé ou le titre Wikipédia."""
+        stop = {"the", "inc", "corp", "co", "company", "group", "holdings", "plc", "ltd", "sa", "nv", "ag", "se"}
+        words = [w for w in re.findall(r"[a-z0-9]+", sec_name.lower()) if w not in stop and len(w) >= 3]
+        hay = " ".join(str(m.get(k, "")) for k in ("label", "wp_en", "wp_fr", "website")).lower()
+        return bool(words) and words[0] in hay
+    rejected = 0
     for c in missing:
-        if by_cik[c] in found: fresh[c] = found[by_cik[c]]
+        m = found.get(by_cik[c])
+        if not m: continue
+        if same_company(names[c], m): m["via"] = "ticker"; fresh[c] = m
+        else: rejected += 1
+    log(f"Métadonnées : {rejected} correspondances par ticker rejetées (nom différent)")
     log(f"Métadonnées : {len(todo) - len(missing)} trouvées par CIK, {sum(1 for c in missing if c in fresh)} de plus par ticker")
     n_desc = 0
     for cik in todo:
@@ -145,7 +161,7 @@ def enrich(rows, log):
         if m.get("wp_fr"): d = _summary("fr", m["wp_fr"])
         if not d and m.get("wp_en"): d = _summary("en", m["wp_en"])
         if d: m["desc"] = d; n_desc += 1
-        m["fetched"] = today.isoformat(); m["tp"] = True
+        m["fetched"] = today.isoformat(); m["tp"] = True; m["v2"] = True
         time.sleep(0.05)
     store = dict(prev)
     for cik, m in fresh.items():
