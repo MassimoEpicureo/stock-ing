@@ -1,0 +1,75 @@
+name: Stock-Ing — Données quotidiennes (SEC)
+
+# Construit chaque soir de bourse les données du screener à partir de la SEC
+# (sans Finnhub ni aucune clé API) et les publie sur la branche « data ».
+# Le site les lit directement : aucune action de votre part.
+on:
+  schedule:
+    - cron: '30 22 * * 1-5'      # du lundi au vendredi, 22h30 UTC (après la clôture US)
+  workflow_dispatch:              # bouton « Run workflow » pour lancer à la demande
+    inputs:
+      diag:
+        description: 'Tickers à diagnostiquer (facultatif, séparés par des virgules)'
+        required: false
+        default: ''
+  push:
+    branches: [refonte-sec]       # tests pendant la refonte (sans effet une fois fusionné dans main)
+    paths: ['pipeline/**', 'criteria.json', '.github/workflows/donnees.yml']
+
+permissions:
+  contents: write                 # publier la branche « data »
+  issues: write                   # ouvrir une alerte si les données sont incomplètes
+
+concurrency:
+  group: donnees
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Dépendances
+        run: pip install requests
+
+      - name: Construire les données
+        id: build
+        env:
+          DIAG_TICKERS: ${{ github.event.inputs.diag }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 'Stock-Ing screener MassimoEpicureo@users.noreply.github.com' }}
+        run: python pipeline/build.py
+
+      - name: Publier sur la branche « data »
+        if: success()
+        run: |
+          mkdir -p /tmp/pub && cp out/screen.json out/meta.json criteria.json /tmp/pub/
+          cd /tmp/pub
+          git init -q -b data
+          git config user.name  "stock-ing-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Données du $(date -u +%Y-%m-%d)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
+          echo "Publié : $(du -h screen.json | cut -f1)"
+
+      - name: Alerte si données incomplètes (issue GitHub → e-mail)
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "alerte-donnees" --color B60205 --description "Pipeline Stock-Ing" --force -R ${{ github.repository }} || true
+          BODY="Le calcul quotidien Stock-Ing a échoué le $(date -u +%Y-%m-%d). Les données du site n'ont PAS été mises à jour (la version précédente reste en ligne).
+
+          Détail :
+          $(cat out/errors.txt 2>/dev/null || echo 'erreur technique — voir le journal')
+
+          Journal : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          OPEN=$(gh issue list -R ${{ github.repository }} --label alerte-donnees --state open --json number --jq '.[0].number')
+          if [ -n "$OPEN" ]; then gh issue comment "$OPEN" -R ${{ github.repository }} --body "$BODY";
+          else gh issue create -R ${{ github.repository }} --label alerte-donnees --title "⚠️ Stock-Ing : données incomplètes" --body "$BODY"; fi
