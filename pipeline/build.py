@@ -367,6 +367,13 @@ def compute(f, price, mcap_px=None):
     # --- valorisation (par action : neutre vis-à-vis des classes d'actions multiples)
     sh = h["shares"]
     eps0 = h["eps"]
+    if not f.get("split_factor") and sh and mcap_px and price:
+        # Second contrôle : actions implicites selon Nasdaq (capitalisation / cours). Un ratio >= 1,8
+        # signale une division d'actions pas encore visible dans les dépôts SEC (ex. Booking 2026).
+        # (Un ratio < 1 vient en général des classes d'actions multiples : non traité ici.)
+        fx = (mcap_px / price) / sh
+        if fx >= 1.8:
+            f["split_factor"] = round(fx, 2)
     if f.get("split_factor") and sh:
         sh = sh * f["split_factor"]
         eps0 = eps0 / f["split_factor"] if eps0 is not None else None
