@@ -137,7 +137,8 @@ CONCEPTS = {
                ("us-gaap", "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments"),
                ("ifrs-full", "ProfitLossBeforeTax")],
     "interest_exp": [("us-gaap", "InterestExpense"), ("us-gaap", "InterestExpenseNonoperating"),
-                     ("us-gaap", "InterestExpenseDebt"), ("ifrs-full", "FinanceCosts")],
+                     ("us-gaap", "InterestExpenseDebt"), ("ifrs-full", "FinanceCosts"),
+                     ("ifrs-full", "InterestExpenseOnBorrowings"), ("ifrs-full", "InterestExpense")],
     "cfo": [("us-gaap", "NetCashProvidedByUsedInOperatingActivities"),
             ("us-gaap", "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"),
             ("ifrs-full", "CashFlowsFromUsedInOperatingActivities")],
@@ -165,8 +166,11 @@ CONCEPTS = {
              ("us-gaap", "CashAndDueFromBanks"), ("ifrs-full", "CashAndCashEquivalents")],
     "st_invest": [("us-gaap", "ShortTermInvestments"), ("us-gaap", "MarketableSecuritiesCurrent"),
                   ("us-gaap", "AvailableForSaleSecuritiesDebtSecuritiesCurrent"), ("ifrs-full", "CurrentFinancialAssets")],
+    # Plusieurs balises « dette totale » coexistent et certaines ne couvrent qu'une ligne secondaire :
+    # on retient la plus élevée (voir fundamentals()).
     "debt_total": [("us-gaap", "LongTermDebt"), ("us-gaap", "DebtLongtermAndShorttermCombinedAmount"),
-                   ("us-gaap", "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities")],
+                   ("us-gaap", "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities"),
+                   ("us-gaap", "DebtAndCapitalLeaseObligations"), ("us-gaap", "DebtInstrumentCarryingAmount")],
     "debt_lt": [("us-gaap", "LongTermDebtNoncurrent"), ("us-gaap", "LongTermDebtAndCapitalLeaseObligations"),
                 ("us-gaap", "SecuredLongTermDebt"), ("us-gaap", "LongTermNotesPayable"), ("us-gaap", "SeniorLongTermNotes"),
                 ("us-gaap", "UnsecuredLongTermDebt"), ("us-gaap", "OtherLongTermDebtNoncurrent"),
@@ -174,10 +178,12 @@ CONCEPTS = {
                 ("ifrs-full", "LongtermBorrowings")],
     "debt_cur": [("us-gaap", "LongTermDebtCurrent"), ("us-gaap", "DebtCurrent"),
                  ("us-gaap", "LongTermDebtAndCapitalLeaseObligationsCurrent"),
+                 ("ifrs-full", "CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings"),
                  ("ifrs-full", "CurrentPortionOfNoncurrentBorrowings"), ("ifrs-full", "CurrentBorrowings")],
-    "debt_st": [("us-gaap", "ShortTermBorrowings"), ("us-gaap", "CommercialPaper"), ("ifrs-full", "ShorttermBorrowings")],
+    "debt_st": [("us-gaap", "ShortTermBorrowings"), ("us-gaap", "CommercialPaper"), ("us-gaap", "OtherShortTermBorrowings")],
+    "income_tax": [("us-gaap", "IncomeTaxExpenseBenefit"), ("ifrs-full", "IncomeTaxExpenseContinuingOperations")],
 }
-INSTANT = {"assets", "assets_cur", "liab_cur", "equity", "cash", "st_invest", "debt_total", "debt_lt", "debt_cur", "debt_st"}
+INSTANT = { "assets_cur", "liab_cur", "equity", "cash", "st_invest", "debt_total", "debt_lt", "debt_cur", "debt_st"}
 ANNUAL_FORMS = {"10-K", "10-K/A", "10-KT", "20-F", "20-F/A", "40-F", "40-F/A"}
 
 def fy_of(end):
@@ -233,8 +239,20 @@ def series(facts, key):
                 res[fy] = (float(v), end.isoformat())
     return res
 
+def series_max(facts, key):
+    """Comme series(), mais retient pour chaque exercice la valeur la PLUS ÉLEVÉE parmi les concepts."""
+    res = {}
+    for tc in CONCEPTS[key]:
+        saved = CONCEPTS[key]; CONCEPTS[key] = [tc]
+        try: one = series(facts, key)
+        finally: CONCEPTS[key] = saved
+        for fy, (v, end) in one.items():
+            if fy not in res or v > res[fy][0]: res[fy] = (v, end)
+    return res
+
 def fundamentals(facts):
     raw = {k: series(facts, k) for k in CONCEPTS}
+    raw["debt_total"] = series_max(facts, "debt_total")
     years = sorted(set(raw["revenue"]) & set(raw["net_income"]))
     if not years: return None
     last = years[-1]
@@ -248,16 +266,19 @@ def fundamentals(facts):
     for y in years:
         # Dette financière = dette long terme totale (ou part non courante + part courante)
         # + emprunts court terme / billets de trésorerie (publiés à part). Hors dettes locatives.
-        debt = v("debt_total", y)
-        if debt is None:
-            parts = [v("debt_lt", y), v("debt_cur", y)]
-            if any(p is not None for p in parts):
-                debt = sum(p for p in parts if p is not None)
+        cands = []
+        if v("debt_total", y) is not None: cands.append(v("debt_total", y))
+        parts = [v("debt_lt", y), v("debt_cur", y)]
+        if any(p is not None for p in parts): cands.append(sum(p for p in parts if p is not None))
+        debt = max(cands) if cands else None
         if v("debt_st", y) is not None:
             debt = (debt or 0) + v("debt_st", y)
         op = v("op_income", y)
         if op is None and v("pretax", y) is not None:
             op = v("pretax", y) + (v("interest_exp", y) or 0)   # approximation de l'EBIT
+        if op is None and v("net_income", y) is not None and v("income_tax", y) is not None:
+            # IFRS sans résultat opérationnel publié (ex. TotalEnergies) : RN + impôt + frais financiers
+            op = v("net_income", y) + v("income_tax", y) + (v("interest_exp", y) or 0)
         cfo, capex = v("cfo", y), v("capex", y)
         hist[y] = {
             "end": raw["revenue"][y][1], "revenue": v("revenue", y), "net_income": v("net_income", y),
