@@ -47,12 +47,18 @@ def load_previous():
     try: return r.json() if r else {}
     except Exception: return {}
 
-def _sparql(ciks):
-    vals = " ".join(f'"{c:010d}" "{c}"' for c in ciks)
+def _sparql(ciks=None, tickers=None):
+    """Par CIK (P5531) ou, à défaut, par ticker coté au NYSE (Q13677) / Nasdaq (Q82059)."""
+    if ciks:
+        vals = " ".join(f'"{c:010d}" "{c}"' for c in ciks)
+        ident = f'VALUES ?cik {{ {vals} }}\n  ?item wdt:P5531 ?cik .'
+    else:
+        vals = " ".join('"' + t.replace('"', '') + '"' for t in tickers)
+        ident = (f'VALUES ?cik {{ {vals} }}\n  ?item p:P414 ?st . ?st ps:P414 ?ex ; pq:P249 ?cik .'
+                 '\n  VALUES ?ex { wd:Q13677 wd:Q82059 }')
     q = f"""
 SELECT ?cik ?item ?inception ?iso ?hqiso ?website ?logo ?frTitle ?enTitle ?descFr ?descEn WHERE {{
-  VALUES ?cik {{ {vals} }}
-  ?item wdt:P5531 ?cik .
+  {ident}
   OPTIONAL {{ ?item wdt:P571 ?inception . }}
   OPTIONAL {{ ?item wdt:P17 ?c . ?c wdt:P297 ?iso . }}
   OPTIONAL {{ ?item wdt:P159 ?hq . ?hq wdt:P17 ?hc . ?hc wdt:P297 ?hqiso . }}
@@ -76,8 +82,9 @@ SELECT ?cik ?item ?inception ?iso ?hqiso ?website ?logo ?frTitle ?enTitle ?descF
     out = {}
     for b in r.json()["results"]["bindings"]:
         g = lambda k: b.get(k, {}).get("value")
-        cik = int(g("cik"))
-        m = out.setdefault(cik, {})
+        key = g("cik")
+        key = int(key) if (ciks and key.isdigit()) else key
+        m = out.setdefault(key, {})
         inc = g("inception")
         if inc and inc[:1] != "-":
             y = int(inc[:4])
@@ -111,12 +118,25 @@ def enrich(rows, log):
     prev = load_previous()
     today = date.today()
     cutoff = (today - timedelta(days=REFRESH_DAYS)).isoformat()
-    todo = [x["cik"] for x in rows if (prev.get(str(x["cik"])) or {}).get("fetched", "") < cutoff]
+    def stale(m):
+        # à rafraîchir : jamais vu, plus de 30 jours, ou non trouvé et pas encore cherché par ticker
+        return (m.get("fetched", "") < cutoff) or (not m.get("wikidata") and not m.get("tp"))
+    todo = [x["cik"] for x in rows if stale(prev.get(str(x["cik"])) or {})]
     log(f"Métadonnées : {len(rows) - len(todo)} en cache, {len(todo)} à rafraîchir (Wikidata / Wikipédia)")
     fresh = {}
     t0 = time.time()
     for i in range(0, len(todo), 150):
-        fresh.update(_sparql(todo[i:i + 150])); time.sleep(1)
+        fresh.update(_sparql(ciks=todo[i:i + 150])); time.sleep(1)
+    # Seconde passe par ticker pour les sociétés sans CIK sur Wikidata
+    by_cik = {x["cik"]: x["ticker"] for x in rows}
+    missing = [c for c in todo if c not in fresh]
+    tick = [by_cik[c] for c in missing]
+    found = {}
+    for i in range(0, len(tick), 150):
+        found.update(_sparql(tickers=tick[i:i + 150])); time.sleep(1)
+    for c in missing:
+        if by_cik[c] in found: fresh[c] = found[by_cik[c]]
+    log(f"Métadonnées : {len(todo) - len(missing)} trouvées par CIK, {sum(1 for c in missing if c in fresh)} de plus par ticker")
     n_desc = 0
     for cik in todo:
         m = fresh.setdefault(cik, {})
@@ -125,7 +145,7 @@ def enrich(rows, log):
         if m.get("wp_fr"): d = _summary("fr", m["wp_fr"])
         if not d and m.get("wp_en"): d = _summary("en", m["wp_en"])
         if d: m["desc"] = d; n_desc += 1
-        m["fetched"] = today.isoformat()
+        m["fetched"] = today.isoformat(); m["tp"] = True
         time.sleep(0.05)
     store = dict(prev)
     for cik, m in fresh.items():
