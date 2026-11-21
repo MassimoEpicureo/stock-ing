@@ -1,0 +1,36 @@
+{
+ "generated_at": "2026-11-21T03:22:41+00:00",
+ "n": 1695,
+ "sp500_tagged": 486,
+ "lists": {
+  "A": 61,
+  "B": 166,
+  "C": 67,
+  "D": 12
+ },
+ "coverage": {
+  "prices": 0.978,
+  "fundamentals": 0.873
+ },
+ "sources": [
+  "SEC EDGAR companyfacts (10-K / 20-F)",
+  "SEC company_tickers_exchange",
+  "Nasdaq.com screener (cours)",
+  "github.com/datasets/s-and-p-500-companies"
+ ],
+ "criteria_version": 1,
+ "errors": [],
+ "log": [
+  "Univers SEC NYSE+Nasdaq : 6009 sociétés (un titre par société)",
+  "S&P 500 : 503 constituants",
+  "Cours Nasdaq.com : 7279 actions",
+  "Couverture des cours : 98%",
+  "Téléchargement SEC companyfacts.zip …",
+  "  ok : 1.43 Go en 5 s",
+  "Fondamentaux lus : 2100/3035 dossiers · couverture des sociétés ≥ seuil (selon Nasdaq) : 1694/1940 (87%) · retenues (≥ 2.0 Md$) : 1695",
+  "Métadonnées : 1695 en cache, 0 à rafraîchir (Wikidata / Wikipédia)",
+  "Métadonnées : 0 correspondances par ticker rejetées (nom différent)",
+  "Métadonnées : 0 trouvées par CIK, 0 de plus par ticker",
+  "Métadonnées : 1350/1695 sociétés trouvées sur Wikidata, 0 descriptions Wikipédia récupérées ce passage (0 s)"
+ ]
+}

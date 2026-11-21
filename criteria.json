@@ -1,0 +1,42 @@
+{
+  "_doc": "SOURCE UNIQUE des critères Stock-Ing. Lu par pipeline/build.py (calcul quotidien) et par index.html (site). Modifier un seuil ici le modifie partout. Les libellés 'notion' sont les noms EXACTS des cases de la base Notion '2. Critères'.",
+  "version": 1,
+  "universe": {
+    "exchanges": ["NYSE", "Nasdaq"],
+    "min_market_cap_bn_usd": 2.0
+  },
+  "quality": {
+    "label": "Qualité",
+    "max_misses": 1,
+    "criteria": [
+      {"key": "rev_growth_5y", "label": "Croissance CA 5 ans", "op": ">=", "value": 25, "unit": "%", "notion": "CA sur 5 ans > 25%", "help": "Hausse cumulée du chiffre d'affaires entre l'exercice N-5 et N (10-K)."},
+      {"key": "net_margin", "label": "Marge nette", "op": ">=", "value": 10, "unit": "%", "notion": "Net margin >10%", "help": "Résultat net / chiffre d'affaires, dernier exercice."},
+      {"key": "roce", "label": "ROCE", "op": ">=", "value": 12, "unit": "%", "notion": "ROCE >12", "help": "Résultat opérationnel / (Total actif - Passif courant). Ne dépend pas des capitaux propres, donc fiable même quand ils sont négatifs."},
+      {"key": "net_debt_fcf", "label": "Dette nette / FCF", "op": "<=", "value": 3, "unit": "ans", "notion": "Dette nette/FCF < 3", "help": "Années de FCF pour rembourser la dette financière nette. Trésorerie nette = 0. FCF négatif = échec."},
+      {"key": "current_ratio", "label": "Current Ratio", "op": ">=", "value": 1, "unit": "", "notion": "Current Ratio > 1", "help": "Actif courant / passif courant."},
+      {"key": "payout", "label": "Payout Ratio", "op": "<=", "value": 70, "unit": "%", "notion": "Payout Ratio < 70%", "help": "Dividendes versés / résultat net."},
+      {"key": "has_dividend", "label": "Dividende", "op": "is", "value": true, "unit": "", "notion": "Dividende", "help": "Dividende versé sur le dernier exercice."},
+      {"key": "buyback", "label": "Rachat d'actions", "op": ">", "value": 0, "unit": "%/an", "notion": "Rachat d'Actions", "help": "Baisse annuelle moyenne du nombre d'actions diluées sur 5 ans (positif = rachats nets)."}
+    ]
+  },
+  "price": {
+    "label": "Prix",
+    "max_misses": 0,
+    "criteria": [
+      {"key": "pe", "label": "PER", "op": "<=", "value": 20, "unit": "", "notion": "PER < 20", "help": "Cours / BPA dilué du dernier exercice. Équivaut à un rendement bénéficiaire >= 5 %."},
+      {"key": "p_fcf", "label": "P/FCF", "op": "<=", "value": 20, "unit": "", "notion": "P/FCF < 20", "help": "Cours / FCF par action dilué (FCF = flux d'exploitation - capex)."}
+    ]
+  },
+  "lists": {
+    "A": {"label": "Compounders à prix raisonnable", "help": "Qualité validée (1 échec toléré) ET prix validé."},
+    "B": {"label": "Compounders trop chers", "help": "Qualité validée, prix non validé. À surveiller."},
+    "C": {"label": "Qualité en difficulté", "help": "Moyennes 5 ans de ROCE et de marge au-dessus des seuils, mais dernier exercice en dessous."},
+    "D": {"label": "Mégots (Graham)", "help": "PER <= 15, PER x P/B <= 22,5, Current Ratio >= 1,5, bénéfice positif sur tous les exercices disponibles (10 ans max). Pas d'exigence de qualité.",
+          "pe_max": 15, "graham_max": 22.5, "current_ratio_min": 1.5, "min_years_positive": 8}
+  },
+  "data_quality": {
+    "min_price_coverage": 0.8,
+    "min_fundamental_coverage": 0.7,
+    "min_universe_size": 800
+  }
+}
