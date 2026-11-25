@@ -451,10 +451,49 @@ def download_companyfacts():
     url = "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
     log("Téléchargement SEC companyfacts.zip …")
     t0 = time.time()
-    with requests.get(url, headers={"User-Agent": SEC_UA}, stream=True, timeout=600) as r:
-        r.raise_for_status()
-        with open(path, "wb") as fh:
-            for chunk in r.iter_content(1 << 20): fh.write(chunk)
+    # Fichier de ~1,4 Go : une coupure réseau en cours de route est fréquente.
+    # On reprend là où l'on s'est arrêté (en-tête Range) jusqu'à 6 tentatives.
+    if os.path.exists(path):
+        os.remove(path)
+    total, attempts = None, 6
+    for attempt in range(1, attempts + 1):
+        done = os.path.getsize(path) if os.path.exists(path) else 0
+        headers = {"User-Agent": SEC_UA}
+        if done:
+            headers["Range"] = f"bytes={done}-"
+        try:
+            with requests.get(url, headers=headers, stream=True, timeout=(30, 300)) as r:
+                if done and r.status_code == 200:      # le serveur ignore Range : on repart de zéro
+                    done = 0
+                elif done and r.status_code == 416:    # déjà complet
+                    break
+                r.raise_for_status()
+                if r.status_code == 206:
+                    cr = r.headers.get("Content-Range", "")
+                    if "/" in cr and cr.rsplit("/", 1)[1].isdigit():
+                        total = int(cr.rsplit("/", 1)[1])
+                elif r.headers.get("Content-Length", "").isdigit():
+                    total = int(r.headers["Content-Length"])
+                with open(path, "ab" if done else "wb") as fh:
+                    for chunk in r.iter_content(1 << 20):
+                        fh.write(chunk)
+            size = os.path.getsize(path)
+            if total is None or size >= total:
+                break
+            raise IOError(f"incomplet : {size} / {total} octets")
+        except (requests.exceptions.RequestException, IOError) as e:
+            size = os.path.getsize(path) if os.path.exists(path) else 0
+            if attempt == attempts:
+                raise
+            wait = min(60, 10 * attempt)
+            log(f"  coupure ({type(e).__name__}) à {size/1e9:.2f} Go — reprise dans {wait} s "
+                f"(tentative {attempt + 1}/{attempts})")
+            time.sleep(wait)
+    try:
+        with zipfile.ZipFile(path) as z:
+            z.namelist()
+    except zipfile.BadZipFile:
+        raise RuntimeError("companyfacts.zip corrompu après téléchargement")
     log(f"  ok : {os.path.getsize(path)/1e9:.2f} Go en {time.time()-t0:.0f} s")
     return path
 
